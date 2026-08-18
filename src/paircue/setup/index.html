@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+    <title>PairCue Setup</title>
+    <meta
+      name="description"
+      content="Create a private PairCue configuration without sending settings or API keys anywhere."
+    >
+    <link rel="stylesheet" href="setup.css">
+    <script src="setup.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#main" aria-label="PairCue setup home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span>PairCue</span>
+      </a>
+      <span class="privacy-badge">Private setup</span>
+    </header>
+
+    <main id="main" class="shell">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">SETUP WIZARD</p>
+        <h1 id="page-title">Your library.<br><span>Two languages.</span></h1>
+        <p class="lede">
+          Choose where you watch and what you want to learn. PairCue will create a ready-to-use
+          configuration file for you.
+        </p>
+        <div class="privacy-note" role="note">
+          <strong>Your setup stays on this device.</strong>
+          It communicates only with PairCue on this device and has no analytics, account, or
+          stored form data.
+        </div>
+        <div id="system-check" class="system-check" role="status" aria-live="polite">
+          Checking whether this device is ready for video…
+        </div>
+      </section>
+
+      <form id="setup-form" novalidate>
+        <section class="step" aria-labelledby="library-heading">
+          <div class="step-number" aria-hidden="true">1</div>
+          <div class="step-content">
+            <p class="step-kicker">START SMALL</p>
+            <h2 id="library-heading">What do you want to do first?</h2>
+            <div class="choice-grid" role="radiogroup" aria-label="Starting point">
+              <label class="choice-card recommended-card">
+                <input type="radio" name="mode" value="single" checked>
+                <span class="recommendation">RECOMMENDED</span>
+                <span class="choice-title">Try one video</span>
+                <span>See a bilingual result before changing your library.</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="mode" value="library">
+                <span class="choice-title">Automate my library</span>
+                <span>Watch Plex, Jellyfin, Emby, or a media folder.</span>
+              </label>
+            </div>
+
+            <div id="single-note" class="journey-note">
+              <strong>No media server or Docker required.</strong>
+              PairCue will process one local video and write the learning subtitles beside it.
+              If you already have both subtitle files, skip this wizard and use
+              <code>paircue pair</code>—it needs no account or API key.
+            </div>
+
+            <div id="library-options" class="library-options" hidden>
+              <p class="subsection-heading">Where do you watch?</p>
+              <div class="choice-grid" role="radiogroup" aria-label="Media platform">
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="plex" checked>
+                  <span class="choice-title">Plex</span>
+                  <span>Connect an existing Plex library</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="jellyfin">
+                  <span class="choice-title">Jellyfin</span>
+                  <span>Use your Jellyfin API key</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="emby">
+                  <span class="choice-title">Emby</span>
+                  <span>Use your Emby API key</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="filesystem">
+                  <span class="choice-title">Media folder</span>
+                  <span>No media server required</span>
+                </label>
+              </div>
+
+              <div class="field-grid inset-panel">
+                <label>
+                  <span>Media folder on this machine or NAS</span>
+                  <input id="host-media-path" type="text" value="/volume1/Media" autocomplete="off">
+                  <small>This folder will be mounted into PairCue.</small>
+                </label>
+                <label>
+                  <span>Local status page port</span>
+                  <input id="host-port" type="text" inputmode="numeric" value="9292" autocomplete="off">
+                  <small>Only accessible from this device by default.</small>
+                </label>
+              </div>
+
+              <div id="server-fields" class="field-grid inset-panel">
+                <label>
+                  <span>Server address</span>
+                  <input id="server-url" type="url" value="http://plex:32400" autocomplete="off">
+                  <small>Address PairCue can reach from Docker.</small>
+                </label>
+                <label>
+                  <span>Server token or API key</span>
+                  <input id="server-token" type="password" autocomplete="new-password">
+                  <small>Stored only in the downloaded file.</small>
+                </label>
+                <label id="user-id-field" hidden>
+                  <span>User ID</span>
+                  <input id="server-user-id" type="text" autocomplete="off">
+                  <small>Required by Jellyfin and Emby.</small>
+                </label>
+                <label>
+                  <span>Library path seen by the server</span>
+                  <input id="server-prefix" type="text" value="/volume1/Media" autocomplete="off">
+                  <small>Usually the same folder path as above.</small>
+                </label>
+              </div>
+
+              <details class="advanced">
+                <summary>NAS file permissions</summary>
+                <div class="field-grid details-grid">
+                  <label>
+                    <span>User ID (PUID)</span>
+                    <input id="puid" type="text" inputmode="numeric" value="10001" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Group ID (PGID)</span>
+                    <input id="pgid" type="text" inputmode="numeric" value="10001" autocomplete="off">
+                  </label>
+                </div>
+                <p class="hint">Change these only if PairCue cannot write beside your videos.</p>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="language-heading">
+          <div class="step-number" aria-hidden="true">2</div>
+          <div class="step-content">
+            <p class="step-kicker">YOUR LEARNING PAIR</p>
+            <h2 id="language-heading">Which two languages?</h2>
+            <div class="language-row">
+              <label>
+                <span>Spoken / source language</span>
+                <input id="source-language" list="language-options" value="en" autocomplete="off">
+              </label>
+              <button id="swap-languages" class="swap" type="button" aria-label="Swap languages">
+                <span aria-hidden="true">⇄</span>
+              </button>
+              <label>
+                <span>Learning language</span>
+                <input id="target-language" list="language-options" value="zh-HK" autocomplete="off">
+              </label>
+            </div>
+            <datalist id="language-options">
+              <option value="en">English</option>
+              <option value="zh-HK">Traditional Chinese (Hong Kong)</option>
+              <option value="zh-TW">Traditional Chinese (Taiwan)</option>
+              <option value="zh-CN">Simplified Chinese</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="pt-BR">Portuguese (Brazil)</option>
+            </datalist>
+            <p class="hint">Use a standard language tag. You can type one that is not listed.</p>
+
+            <details class="advanced">
+              <summary>Subtitle style and line order</summary>
+              <div class="field-grid details-grid">
+                <label>
+                  <span>First line</span>
+                  <select id="line-order">
+                    <option value="target-first">Learning language</option>
+                    <option value="source-first">Spoken language</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Translation style</span>
+                  <input
+                    id="target-style"
+                    type="text"
+                    value="natural, concise dialogue suitable for subtitles"
+                    autocomplete="off"
+                  >
+                </label>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="automation-heading">
+          <div class="step-number" aria-hidden="true">3</div>
+          <div class="step-content">
+            <p class="step-kicker">AUTOMATION</p>
+            <h2 id="automation-heading">How should missing subtitles be filled?</h2>
+            <p class="section-copy">Start with what you already have. PairCue will suggest the simplest setup.</p>
+            <div class="preset-grid" role="radiogroup" aria-label="Existing subtitle situation">
+              <label class="preset-card">
+                <input type="radio" name="subtitle-preset" value="both">
+                <span class="choice-title">I have both languages</span>
+                <span>No provider account needed</span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="subtitle-preset" value="one">
+                <span class="choice-title">I have one language</span>
+                <span>Translate the track I have</span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="subtitle-preset" value="automatic" checked>
+                <span class="choice-title">I’m not sure—find them</span>
+                <span>PairCue shows only the services it needs</span>
+              </label>
+            </div>
+            <div class="journey-note">
+              PairCue tries the enabled options in order and stops as soon as it has enough. Speech
+              generation stays optional because it uploads audio and may cost more. Provider API
+              keys come from your own accounts. They stay in your private local config and are sent
+              only to the provider you choose.
+            </div>
+
+            <div class="automation-stack">
+              <section class="automation-card">
+                <div class="automation-head">
+                  <div>
+                    <span class="flow-index">A</span>
+                    <h3>Search exact releases</h3>
+                    <p>Use your own OpenSubtitles API key.</p>
+                  </div>
+                  <label class="switch">
+                    <input id="search-enabled" type="checkbox" checked>
+                    <span aria-hidden="true"></span>
+                    <b>Enabled</b>
+                  </label>
+                </div>
+                <div id="search-panel" class="field-grid compact-fields">
+                  <label>
+                    <span>OpenSubtitles API key</span>
+                    <input id="opensubtitles-key" type="password" autocomplete="new-password">
+                  </label>
+                </div>
+              </section>
+
+              <section class="automation-card">
+                <div class="automation-head">
+                  <div>
+                    <span class="flow-index">B</span>
+                    <h3>Translate the source track</h3>
+                    <p>Any OpenAI-compatible chat endpoint works.</p>
+                  </div>
+                  <label class="switch">
+                    <input id="translation-enabled" type="checkbox" checked>
+                    <span aria-hidden="true"></span>
+                    <b>Enabled</b>
+                  </label>
+                </div>
+                <div id="translation-panel" class="field-grid compact-fields">
+                  <label>
+                    <span>Z.AI API key</span>
+                    <input id="translation-key" type="password" autocomplete="new-password">
+                    <small>Subtitle dialogue is sent to this provider for translation.</small>
+                  </label>
+                  <details class="advanced provider-details">
+                    <summary>Use a different compatible provider</summary>
+                    <label>
+                      <span>Translation endpoint</span>
+                      <input
+                        id="translation-url"
+                        type="url"
+                        value="https://api.z.ai/api/coding/paas/v4"
+                        autocomplete="off"
+                      >
+                    </label>
+                    <label>
+                      <span>Model</span>
+                      <input id="translation-model" type="text" value="glm-5-turbo" autocomplete="off">
+                    </label>
+                  </details>
+                </div>
+              </section>
+
+              <section class="automation-card">
+                <div class="automation-head">
+                  <div>
+                    <span class="flow-index">C</span>
+                    <h3>Generate from speech</h3>
+                    <p>Final fallback when no source subtitle exists.</p>
+                  </div>
+                  <label class="switch">
+                    <input id="transcription-enabled" type="checkbox">
+                    <span aria-hidden="true"></span>
+                    <b>Optional</b>
+                  </label>
+                </div>
+                <div id="transcription-panel" class="field-grid compact-fields" hidden>
+                  <label>
+                    <span>OpenAI API key</span>
+                    <input id="transcription-key" type="password" autocomplete="new-password">
+                    <small>Audio is uploaded only when no source subtitle can be found.</small>
+                  </label>
+                  <details class="advanced provider-details">
+                    <summary>Use a self-hosted or compatible provider</summary>
+                    <label>
+                      <span>Transcription endpoint</span>
+                      <input
+                        id="transcription-url"
+                        type="url"
+                        value="https://api.openai.com/v1"
+                        autocomplete="off"
+                      >
+                    </label>
+                    <label>
+                      <span>Model</span>
+                      <input id="transcription-model" type="text" value="whisper-1" autocomplete="off">
+                    </label>
+                  </details>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="finish" aria-labelledby="finish-heading">
+          <div>
+            <p class="step-kicker">READY</p>
+            <h2 id="finish-heading">Save your PairCue setup</h2>
+            <p>PairCue saves it beside the folder where setup was started. Keep it private.</p>
+          </div>
+          <div class="button-row">
+            <button id="copy-config" class="secondary-button" type="button">Copy config</button>
+            <button id="download-config" class="primary-button" type="button">
+              Save paircue.env
+            </button>
+          </div>
+          <p id="form-error" class="form-error" role="alert" hidden></p>
+          <p id="action-status" class="action-status" aria-live="polite"></p>
+          <details class="preview">
+            <summary>Preview configuration (keys are hidden)</summary>
+            <pre id="config-preview" tabindex="0"></pre>
+          </details>
+        </section>
+      </form>
+
+      <section class="next-step" aria-labelledby="next-heading">
+        <span class="next-number">NEXT</span>
+        <div>
+          <h2 id="next-heading">Try one video</h2>
+          <p id="next-copy">PairCue will guide you after the setup is saved.</p>
+          <pre id="next-command" class="next-command"></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      PairCue Setup · Setup stays on this device · No analytics
+    </footer>
+  </body>
+</html>

@@ -36,6 +36,25 @@ class TargetDownloader(NoopDownloader):
         return (output,)
 
 
+class DualTrackDownloader(NoopDownloader):
+    def __init__(self) -> None:
+        self.requests: list[set[str]] = []
+
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
+        self.requests.append(languages)
+        outputs: list[Path] = []
+        for language, text in (("ja", "こんにちは"), ("en", "Hello")):
+            if language not in languages:
+                continue
+            output = item.path.parent / f"{item.path.stem}.{language}.srt"
+            output.write_text(
+                f"1\n00:00:00,000 --> 00:00:01,000\n{text}\n\n",
+                encoding="utf-8",
+            )
+            outputs.append(output)
+        return tuple(outputs)
+
+
 class FullTranslator:
     def translate_all(
         self, subtitles: list[object], *, context: str, glossary: dict[str, str]
@@ -178,8 +197,28 @@ def test_download_only_mode_requests_the_custom_target(tmp_path: Path) -> None:
     ).process(_media(tmp_path))
 
     assert result.status == "completed"
-    assert downloader.requests == [{"ja"}]
+    assert downloader.requests == [{"en", "ja"}]
     assert result.outputs == (tmp_path / "Movie.ja.srt",)
+
+
+def test_download_only_mode_fetches_and_merges_both_languages(tmp_path: Path) -> None:
+    media = tmp_path / "Lesson.mkv"
+    media.write_bytes(b"fake media")
+    item = MediaItem("5", "movie", media, "Lesson")
+    downloader = DualTrackDownloader()
+
+    result = _pipeline(
+        tmp_path,
+        None,
+        source_language="ja",
+        target_language="en",
+        downloader=downloader,
+    ).process(item)
+
+    assert result.status == "completed"
+    assert result.message == "merged existing subtitle tracks (100%/100% matched)"
+    assert downloader.requests == [{"en", "ja"}]
+    assert "Hello\nこんにちは" in (tmp_path / "Lesson.en.cc.srt").read_text()
 
 
 def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: Path) -> None:

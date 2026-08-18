@@ -8,11 +8,23 @@ import srt
 
 from paircue.services import media_tools
 from paircue.services.media_tools import (
+    EmbeddedSubtitleExtractor,
     SubtitleSynchronizer,
     _best_offset_windows,
     _smooth_activity,
     _subtitle_activity,
 )
+
+
+def test_embedded_extraction_gracefully_skips_when_ffprobe_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    media_path = tmp_path / "movie.mkv"
+    media_path.write_bytes(b"media")
+    monkeypatch.setattr(media_tools.shutil, "which", lambda command: None)
+
+    assert EmbeddedSubtitleExtractor().extract(media_path, {"en"}) == ()
 
 
 def test_best_offset_finds_subtitle_delay() -> None:

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0b6 - 2026-08-18
+
+- Add `paircue setup`, a packaged private visual wizard that saves a ready-to-use `paircue.env`
+  through a token-protected localhost connection without analytics or browser storage.
+- Open the setup wizard when `paircue` is run without a subcommand, so first-time users do not need
+  to learn the CLI structure.
+- Add `paircue learn` for running the complete subtitle pipeline on one local video without a
+  media server or persistent state database.
+- Make the onboarding journey start with one video, then graduate to full-library automation.
+- Show video-tool readiness in the local setup page and reveal the finished subtitle in the native
+  file manager after the first guided run.
+- Search for both configured languages in no-translation mode and merge them when timing coverage
+  passes the confidence threshold.
+- Use one environment file for Docker host and PairCue settings, with the status API bound to a
+  localhost-only published port.
+
 ## 0.1.0b5 - 2026-08-18
 
 - Complete the fallback chain from existing subtitle to exact-hash search, metadata search,

@@ -14,18 +14,51 @@ custom video player.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
-## Try the unique part first
+## Start with the smallest win
+
+From the checked-out project folder, install PairCue with Python 3.11 or newer:
+
+```bash
+python3 -m pip install .
+```
+
+### Already have two subtitle files?
 
 Already have two subtitle files from the same movie? Create a learning track without configuring a
 media server, API key, or database:
 
 ```bash
-python -m pip install .
 paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt
 ```
 
 PairCue matches by time, including one-to-many cue differences, and refuses low-confidence pairs.
 Use `--order source-first` to reverse the two lines. Nothing is uploaded by this command.
+
+### Want to try the complete flow on one video?
+
+Open the private visual setup wizard—there is no command to remember beyond the product name:
+
+```bash
+paircue
+```
+
+Choose **Try one video**, select the two languages, and tell PairCue whether you already have zero,
+one, or two subtitle tracks. Fields for search or translation appear only when they are needed.
+Press **Save and choose a video**. The wizard talks
+only to the PairCue process on your own device and has no analytics, account, or stored browser
+form data. It writes the file for you and backs up an older configuration before replacement.
+After saving, PairCue opens the system file chooser automatically. Pick one video and the first run
+starts—there is no path or second command to type. It reveals the completed subtitle in Finder or
+the file manager. Later runs use `paircue learn --config paircue.env`.
+
+The setup page also checks whether FFmpeg and FFprobe are available before the first video. PairCue
+does not bundle those tools, preserving a clear license boundary. Two existing SRT tracks can still
+be merged without them.
+
+`paircue learn` needs no media server or persistent database. It uses existing sidecars first,
+then the enabled search, speech-generation, and translation fallbacks, and writes the result beside
+the video. When no filename is supplied, PairCue opens the system file chooser. Use `--title` and
+`--year` only when the filename is not useful for metadata search.
 
 ## What it writes
 
@@ -40,27 +73,26 @@ Translation is all-or-nothing: PairCue does not publish bilingual output when ev
 missing. By default, the source sidecar is also rewritten atomically with non-dialogue cues removed;
 set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
-## Quick start
+## Automate the library after one video works
 
-1. Copy `.env.example` to `.env` and set the NAS mount paths and UID/GID.
-2. Copy `paircue.env.example` to `paircue.env` and choose a platform and translation settings.
-3. Build the image with `docker compose build core`.
-4. Check the installation with `docker compose run --rm core paircue doctor`.
-5. Generate the API token with `docker run --rm paircue:0.1.0-beta.5 paircue generate-token`.
-6. Start the subtitle service:
+Run `paircue` again and choose **Automate my library**. The saved `paircue.env` contains
+both Docker host settings and PairCue settings, so there is only one file to manage. Put it beside
+`docker-compose.yml`, then run:
 
-   ```bash
-   docker compose up -d core
-   ```
+```bash
+docker compose --env-file paircue.env build core
+docker compose --env-file paircue.env run --rm core paircue doctor
+docker compose --env-file paircue.env up -d core
+```
 
-Polling is the default, so no inbound port is required. Start with a test library or a copy of a
-few media files. This repository provides a Dockerfile for local builds; PairCue does not publish
-an official prebuilt container image.
+Polling is the default and the status port binds only to `127.0.0.1`. Start with a test library or a
+copy of a few media files. This repository provides a Dockerfile for local builds; PairCue does not
+publish an official prebuilt container image.
 
 After startup, view queue and recent results through the protected status endpoint:
 
 ```bash
-curl -H "Authorization: Bearer $PAIRCUE_API_TOKEN" http://127.0.0.1:9292/v1/status
+curl -H "Authorization: Bearer <token from paircue.env>" http://127.0.0.1:9292/v1/status
 ```
 
 It reports filenames rather than full media-library paths.
@@ -105,7 +137,7 @@ PAIRCUE_PLATFORM=filesystem
 ```
 
 `PAIRCUE_SERVER_PATH_PREFIX` is the library path seen by Plex, Jellyfin, or Emby. `MEDIA_PATH` in
-`.env.example` is the same library path on the Docker host; it is mounted as
+`paircue.env` is the same library path on the Docker host; it is mounted as
 `PAIRCUE_MEDIA_ROOT=/media` inside PairCue. Existing `PAIRCUE_PLEX_*` variables remain accepted for
 backward compatibility.
 
@@ -240,7 +272,7 @@ Copy `downloads.env.example` to `downloads.env` and use a different generated AP
 starting it.
 
 ```bash
-docker compose --profile downloads up -d downloads
+docker compose --env-file paircue.env --profile downloads up -d downloads
 ```
 
 The default binding is `127.0.0.1:9293`. Keep it behind a VPN or trusted reverse proxy when remote

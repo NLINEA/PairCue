@@ -1,6 +1,8 @@
 .DS_Store
 .env
 paircue.env
+paircue.env.backup-*
+.paircue-state/
 # Keep any pre-rename local credentials out of Git.
 subflow.env
 downloads.env

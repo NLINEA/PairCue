@@ -3,10 +3,12 @@ name: paircue
 services:
   core:
     build: .
-    image: paircue:0.1.0-beta.5
+    image: paircue:0.1.0-beta.6
     restart: unless-stopped
     env_file: paircue.env
     user: "${PUID:-10001}:${PGID:-10001}"
+    ports:
+      - "127.0.0.1:${PAIRCUE_PORT:-9292}:9292"
     volumes:
       - "${MEDIA_PATH:?Set MEDIA_PATH}:/media:rw"
       - paircue-state:/state
@@ -27,7 +29,7 @@ services:
   downloads:
     profiles: ["downloads"]
     build: .
-    image: paircue:0.1.0-beta.5
+    image: paircue:0.1.0-beta.6
     command: ["paircue", "downloads"]
     restart: unless-stopped
     env_file: downloads.env

@@ -3,6 +3,7 @@
 .venv
 .env
 paircue.env
+paircue.env.backup-*
 # Keep any pre-rename local credentials out of the image context.
 subflow.env
 downloads.env

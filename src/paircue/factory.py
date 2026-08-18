@@ -24,6 +24,15 @@ from paircue.services.translator import (
 
 
 def build_runtime(settings: PairCueSettings) -> CoreRuntime:
+    pipeline = build_pipeline(settings)
+    media_source = build_media_source(settings)
+    coordinator = JobCoordinator(pipeline, max_size=settings.worker_queue_size)
+    return CoreRuntime(media_source, coordinator, settings.scan_interval_seconds)
+
+
+def build_pipeline(settings: PairCueSettings) -> SubtitlePipeline:
+    """Build the subtitle pipeline without requiring a media-server client."""
+
     state = StateStore(settings.state_dir / "paircue.sqlite3")
     opensubtitles_key = settings.opensubtitles_api_key.get_secret_value()
     downloader: SubtitleDownloader
@@ -100,7 +109,7 @@ def build_runtime(settings: PairCueSettings) -> CoreRuntime:
             temporary_root=settings.state_dir / "transcription",
         )
 
-    pipeline = SubtitlePipeline(
+    return SubtitlePipeline(
         media_root=settings.media_root,
         state=state,
         downloader=downloader,
@@ -116,9 +125,6 @@ def build_runtime(settings: PairCueSettings) -> CoreRuntime:
         bilingual_merge_tolerance_ms=settings.bilingual_merge_tolerance_ms,
         bilingual_merge_min_match_ratio=settings.bilingual_merge_min_match_ratio,
     )
-    media_source = build_media_source(settings)
-    coordinator = JobCoordinator(pipeline, max_size=settings.worker_queue_size)
-    return CoreRuntime(media_source, coordinator, settings.scan_interval_seconds)
 
 
 def build_media_source(settings: PairCueSettings) -> MediaSource:

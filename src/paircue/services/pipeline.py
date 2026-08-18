@@ -130,7 +130,8 @@ class SubtitlePipeline:
                     message,
                     (target,),
                 )
-            downloaded = self.downloader.download(item, self._download_targets())
+            requested_languages = {self.source_language, *self._download_targets()}
+            downloaded = self.downloader.download(item, requested_languages)
             for path in downloaded:
                 if self.synchronizer is not None:
                     self.synchronizer.sync(media_path, path)
@@ -163,7 +164,8 @@ class SubtitlePipeline:
                     (output,),
                 )
             raise RuntimeError(
-                f"no {self.target_language} subtitle was found and translation is disabled"
+                f"no {self.target_language} subtitle was found. Add both language SRT files "
+                "beside the video, or reopen PairCue Setup and enable translation"
             )
 
         source_was_generated = False
@@ -177,8 +179,8 @@ class SubtitlePipeline:
             source_was_generated = source_path is not None
         if source_path is None:
             raise RuntimeError(
-                f"no {self.source_language} subtitle is available; configure download or "
-                "transcription before translation"
+                f"no {self.source_language} subtitle was found. Reopen PairCue Setup and add "
+                "subtitle search or speech generation, or place a source SRT beside the video"
             )
         if target is not None and not merge_attempted:
             try:

@@ -19,6 +19,7 @@ flowchart LR
     Jellyfin["Jellyfin connector"] --> Source
     Emby["Emby connector"] --> Source
     Folder["Filesystem scanner"] --> Source
+    Learn["One-video learn command"] --> Pipeline
     Source --> Queue["Deduplicating job queue"]
     Queue --> Lock["Per-media lock"]
     Lock --> Pipeline["Subtitle pipeline"]
@@ -31,6 +32,9 @@ flowchart LR
     Pipeline --> Output["Atomic source / target / bilingual files"]
     Pipeline --> State["SQLite state"]
 
+    Setup["Private setup wizard"] --> Loopback["Token-protected loopback server"]
+    Loopback --> Config["Atomic private paircue.env"]
+
     Browser["Optional browser UI"] --> DownloadAPI["Isolated Download Station app"]
     DownloadAPI --> Synology["Synology API / torrent watch folder"]
 ```
@@ -38,6 +42,12 @@ flowchart LR
 The subtitle service mounts `/media` and receives only the selected media-server and translation
 credentials. The Download Station service mounts only `/torrents` and receives only Download
 Station credentials. They use different bearer tokens and ports.
+
+The setup wizard is packaged with PairCue and is served only on a random `127.0.0.1` port. Its
+one-time random URL token and same-origin check protect the configuration write. It loads no remote
+assets, performs no analytics, writes `paircue.env` with owner-only permissions, and backs up an
+existing regular file before replacement. The `learn` command reuses the same pipeline with
+temporary state and a media root restricted to the selected video's parent directory.
 
 ## Processing contract
 

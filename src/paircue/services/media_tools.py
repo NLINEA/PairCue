@@ -46,27 +46,35 @@ class EmbeddedSubtitleExtractor:
         media_path: Path,
         languages: set[str] | None = None,
     ) -> tuple[Path, ...]:
-        probe = subprocess.run(  # noqa: S603 - fixed executable and argv; no shell
-            [
-                _required_binary("ffprobe"),
-                "-v",
-                "error",
-                "-print_format",
-                "json",
-                "-show_streams",
-                "-select_streams",
-                "s",
-                str(media_path),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
+        try:
+            probe = subprocess.run(  # noqa: S603 - fixed executable and argv; no shell
+                [
+                    _required_binary("ffprobe"),
+                    "-v",
+                    "error",
+                    "-print_format",
+                    "json",
+                    "-show_streams",
+                    "-select_streams",
+                    "s",
+                    str(media_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            log.info("FFprobe is unavailable; continuing with external subtitle files")
+            return ()
         if probe.returncode != 0:
             log.debug("ffprobe found no readable subtitle tracks for %s", media_path.name)
             return ()
-        streams = json.loads(probe.stdout).get("streams", [])
+        try:
+            streams = json.loads(probe.stdout).get("streams", [])
+        except (AttributeError, json.JSONDecodeError):
+            log.warning("ffprobe returned an unreadable subtitle stream list")
+            return ()
         outputs: list[Path] = []
         for subtitle_index, stream in enumerate(streams):
             codec = str(stream.get("codec_name") or "").lower()
