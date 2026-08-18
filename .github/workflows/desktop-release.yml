@@ -58,7 +58,8 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip 'setuptools>=83'
       - run: python -m pip install '.[release]'
-      - run: python scripts/build_desktop.py
+      - name: Build and smoke-test the packaged desktop app
+        run: python scripts/build_desktop.py
       - name: Archive macOS build
         if: runner.os == 'macOS'
         run: ditto -c -k --sequesterRsrc --keepParent release/stage/PairCue-* "release/${{ matrix.archive }}"
@@ -82,10 +83,18 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: release
           merge-multiple: true
+      - name: Verify all four release archives are present
+        run: |
+          test -s release/PairCue-macOS-arm64.zip
+          test -s release/PairCue-macOS-x64.zip
+          test -s release/PairCue-windows-x64.zip
+          test -s release/PairCue-linux-x64.tar.gz
+          test "$(find release -maxdepth 1 -type f -name 'PairCue-*' | wc -l)" -eq 4
       - name: Create SHA-256 checksums
         working-directory: release
         run: sha256sum PairCue-* > SHA256SUMS.txt

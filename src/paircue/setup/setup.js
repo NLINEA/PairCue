@@ -198,6 +198,8 @@ function focusStage(headingId) {
 }
 
 function showPlatformStage() {
+  byId("quick-feedback").hidden = true;
+  byId("next-feedback").hidden = true;
   byId("platform-step").hidden = false;
   byId("platform-picker").hidden = false;
   byId("journey-stage").hidden = true;
@@ -388,6 +390,7 @@ function updateNextStep() {
   byId("next-step").removeAttribute("data-phase");
   byId("next-number").textContent = "NEXT";
   byId("next-link").hidden = true;
+  byId("next-feedback").hidden = true;
   if (library) {
     if (desktopApp) {
       byId("next-heading").textContent = "Your dashboard opens next";
@@ -521,9 +524,11 @@ function renderProgress(payload) {
   const copy = byId("next-copy");
   const output = byId("next-command");
   const link = byId("next-link");
+  const feedback = byId("next-feedback");
   panel.dataset.phase = payload.phase;
   output.textContent = Array.isArray(payload.outputs) ? payload.outputs.join("\n") : "";
   link.hidden = true;
+  feedback.hidden = true;
 
   if (payload.phase === "choosing") {
     number.textContent = "1";
@@ -548,6 +553,7 @@ function renderProgress(payload) {
     } else {
       heading.textContent = "Your bilingual subtitle is ready";
       copy.textContent = `${payload.message} The finished file is highlighted in your file manager.`;
+      feedback.hidden = false;
     }
     return;
   }
@@ -669,7 +675,9 @@ async function quickPairSubtitles() {
   }
   const button = byId("quick-pair");
   const status = byId("quick-pair-status");
+  const feedback = byId("quick-feedback");
   let completed = false;
+  feedback.hidden = true;
   button.disabled = true;
   button.textContent = "Choose two subtitles…";
   status.textContent = "First choose the spoken subtitle, then the learning subtitle.";
@@ -689,6 +697,7 @@ async function quickPairSubtitles() {
     }
     completed = true;
     status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. Keep it beside the video; if ${selectedPlatformName()} does not see it, match the video's base name while keeping .mul.srt. Reopen PairCue to pair another.`;
+    feedback.hidden = false;
     button.textContent = "Pairing complete";
   } catch (error) {
     status.textContent = error.message;
@@ -706,6 +715,8 @@ async function quickPairDemo() {
   }
   const button = byId("quick-demo");
   const status = byId("quick-pair-status");
+  const feedback = byId("quick-feedback");
+  feedback.hidden = true;
   button.disabled = true;
   button.textContent = "Creating demo…";
   status.textContent = "Creating a tiny project-owned subtitle in your Downloads folder.";
@@ -721,6 +732,7 @@ async function quickPairDemo() {
     }
     button.textContent = "Demo complete";
     status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. It uses only short dialogue written for PairCue.`;
+    feedback.hidden = false;
   } catch (error) {
     button.disabled = false;
     button.textContent = "Try safe demo";

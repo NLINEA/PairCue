@@ -49,7 +49,13 @@ def test_visual_setup_is_self_contained_and_only_calls_its_local_origin() -> Non
     assert "window.location.hash.slice(1)" in javascript
     assert "window.history.replaceState" in javascript
     assert "window.location.search).get(\"token\")" not in javascript
-    assert not re.search(r"(?:src|href)=[\"']https?://", html)
+    assert not re.search(r"src=[\"']https?://", html)
+    external_links = re.findall(r"href=[\"'](https?://[^\"']+)", html)
+    assert external_links == [
+        "https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml",
+        "https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml",
+    ]
+    assert html.count('rel="noopener noreferrer"') == 2
 
 
 def test_visual_setup_javascript_only_references_existing_elements() -> None:
@@ -73,6 +79,11 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert "Try safe demo" in html
     assert "Which language should appear on top?" in html
     assert "No Docker or terminal command required." in javascript
+    assert 'id="quick-feedback" class="feedback-prompt" hidden' in html
+    assert 'id="next-feedback" class="feedback-prompt" hidden' in html
+    assert javascript.count("feedback.hidden = false;") == 3
+    assert "github.com" not in javascript
+    assert "Nothing is sent automatically." in html
 
 
 def test_visual_setup_asks_for_platform_before_starting_mode() -> None:

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0b12 - 2026-08-18
+
+- Replace filename-only release instructions with direct Apple silicon, Intel Mac, Windows, and
+  Linux beta downloads.
+- Reveal a voluntary first-result feedback link only after the safe demo, two-SRT pairing, or
+  one-video flow succeeds; no usage data is collected or sent automatically.
+- Add a privacy-safe 10-minute beta mission and a short GitHub form that measures whether a user
+  reached a bilingual subtitle without outside help.
+- Make every release build visibly smoke-test the packaged executable and refuse to publish unless
+  all four desktop archives are present.
+
 ## 0.1.0b11 - 2026-08-18
 
 - Add a real animated product demo and a built-in safe-demo button that creates a project-owned

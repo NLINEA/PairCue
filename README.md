@@ -42,15 +42,15 @@ PairCue never uploads them and refuses to publish a low-confidence pairing.
 
 ## Download and open
 
-No Python or terminal is required. Open [GitHub Releases](../../releases), download the archive for
-your computer, unzip it, and open **PairCue**.
+No Python or terminal is required. Use the direct download for your computer, unzip it, and open
+**PairCue**.
 
 | Your computer | Download |
 |---|---|
-| Apple silicon Mac | `PairCue-macOS-arm64.zip` |
-| Intel Mac | `PairCue-macOS-x64.zip` |
-| Windows | `PairCue-windows-x64.zip` |
-| Linux | `PairCue-linux-x64.tar.gz` |
+| Apple silicon Mac | [Download PairCue for Apple silicon](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-macOS-arm64.zip) |
+| Intel Mac | [Download PairCue for Intel Mac](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-macOS-x64.zip) |
+| Windows | [Download PairCue for Windows](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-windows-x64.zip) |
+| Linux | [Download PairCue for Linux](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-linux-x64.tar.gz) |
 
 These beta apps are not yet signed by Apple or Microsoft. On macOS, right-click PairCue and choose
 **Open** the first time. Windows may show an unrecognized-publisher warning. Download only from this
@@ -161,6 +161,11 @@ You do not need to diagnose a technical cause. Use the guided
 [bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml) or
 [idea form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=feature_request.yml).
 Never post credentials, private library paths, or copyrighted subtitle text.
+
+Trying the beta for the first time? Follow the private [10-minute beta mission](docs/BETA_TEST.md),
+then tell us whether you reached a real bilingual subtitle with the short
+[first-result form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml).
+Nothing is collected automatically.
 
 To install from source, use Python 3.11 or newer:
 

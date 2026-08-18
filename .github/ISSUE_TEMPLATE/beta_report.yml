@@ -1,0 +1,62 @@
+name: Report a first PairCue result
+description: Tell us whether the private beta worked, without sharing media or subtitle content.
+title: "[Beta result]: "
+labels: ["beta feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying PairCue. This form is voluntary and nothing was sent automatically. Never paste API keys, server tokens, private paths, media titles, or subtitle text.
+  - type: dropdown
+    id: route
+    attributes:
+      label: Which first result did you try?
+      options:
+        - Safe demo
+        - Combine two SRT files
+        - Try one video
+        - Automate a library
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where do you watch?
+      options:
+        - Plex
+        - Jellyfin
+        - Emby
+        - Kodi, Infuse, or VLC
+        - A NAS or media folder
+    validations:
+      required: true
+  - type: input
+    id: languages
+    attributes:
+      label: Which two languages?
+      description: Language names only. Do not paste subtitle text.
+      placeholder: Japanese and English
+    validations:
+      required: true
+  - type: dropdown
+    id: success
+    attributes:
+      label: Did you reach a bilingual subtitle without outside help?
+      options:
+        - Yes
+        - Partly — I needed help
+        - No
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: What was the most confusing part?
+      description: Optional. A short sentence is enough.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed credentials, private paths, media titles, logs with personal data, and subtitle content.
+          required: true

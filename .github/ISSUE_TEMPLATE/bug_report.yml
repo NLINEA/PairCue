@@ -38,7 +38,7 @@ body:
     attributes:
       label: PairCue version
       description: Find this in the downloaded archive name, release page, or `paircue --version`.
-      placeholder: 0.1.0b11
+      placeholder: 0.1.0b12
     validations:
       required: true
   - type: textarea

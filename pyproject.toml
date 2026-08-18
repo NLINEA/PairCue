@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paircue"
-version = "0.1.0b11"
+version = "0.1.0b12"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
