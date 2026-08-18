@@ -38,6 +38,8 @@ LANGUAGE_TAGS: dict[str, SubtitleLanguage] = {
 
 SUPPORTED_EXTENSIONS = {".srt"}
 BILINGUAL_LANGUAGE_TAG = "mul"
+MAX_SUBTITLE_BYTES = 16 * 1024 * 1024
+MAX_SUBTITLE_CUES = 100_000
 MUSIC_MARKS = re.compile(r"[♪♫♬♩]")
 BRACKETED_EFFECT = re.compile(r"\s*[\[【][^\]】]*[\]】]\s*")
 PARENTHESIZED_EFFECT = re.compile(r"\s*[（(][^）)]*[）)]\s*")
@@ -125,10 +127,17 @@ def sidecar_path(media_path: Path, language: str, *, bilingual: bool = False) ->
 
 
 def parse_srt(path: Path) -> list[srt.Subtitle]:
+    if path.is_symlink():
+        raise ValueError(f"subtitle file must not be a symbolic link: {path.name}")
+    size = path.stat().st_size
+    if size <= 0 or size > MAX_SUBTITLE_BYTES:
+        raise ValueError(f"subtitle file size is outside the safe limit: {path.name}")
     content = path.read_text(encoding="utf-8-sig", errors="strict")
     subtitles = list(srt.parse(content, ignore_errors=False))
     if not subtitles:
         raise ValueError(f"subtitle file contains no valid cues: {path.name}")
+    if len(subtitles) > MAX_SUBTITLE_CUES:
+        raise ValueError(f"subtitle file contains too many cues: {path.name}")
     return subtitles
 
 

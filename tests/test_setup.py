@@ -85,6 +85,10 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert "github.com" not in javascript
     assert "Nothing is sent automatically." in html
     assert 'configLine("PAIRCUE_CLEAN_SOURCE_OUTPUT", "false")' in javascript
+    assert 'id="translation-final-check-enabled" type="checkbox" checked' in html
+    assert '"PAIRCUE_TRANSLATION_FINAL_CHECK_ENABLED"' in javascript
+    assert "never sees\n                        your video or file paths" in html
+    assert "automatic: { search: true, translation: true, transcription: true }" in javascript
 
 
 def test_visual_setup_asks_for_platform_before_starting_mode() -> None:

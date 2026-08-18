@@ -75,12 +75,26 @@ PairCue works with OpenAI-compatible translation endpoints:
 PAIRCUE_TRANSLATION_BASE_URL=https://your-provider.example/v1
 PAIRCUE_TRANSLATION_API_KEY=your-api-key
 PAIRCUE_TRANSLATION_MODEL=your-model
+PAIRCUE_TRANSLATION_FINAL_CHECK_ENABLED=true
 ```
 
 A second compatible provider can be configured as fallback. Subtitle text is sent to an enabled
 translation provider, so review its privacy policy, retention, pricing, and model terms first.
 
-Translation is all-or-nothing: PairCue publishes no bilingual result if even one cue is missing.
+The final quality check is a second request through the same configured provider. It receives the
+source text, draft translation, language/style settings, title or episode context, and glossary. It
+does not receive video, audio, local paths, media-server credentials, API keys in the request body,
+or other local data. It checks meaning, omissions, natural wording, and glossary consistency; then
+PairCue independently validates exact cue coverage again. Timing remains local and cannot be
+changed by the model.
+
+Translation is fail-closed: PairCue publishes no translated or bilingual result if either pass is
+missing a cue, adds an unexpected cue, returns empty text, exceeds size limits, or fails.
+
+Remote AI endpoints must use HTTPS and an API key. A loopback endpoint such as
+`http://127.0.0.1:11434/v1` or `http://localhost:9000/v1` can run without a key, allowing a local
+OpenAI-compatible model to keep subtitle text on the device. PairCue does not use unofficial OAuth
+or borrow a consumer AI-account login.
 
 ## Subtitle search and download
 
@@ -115,6 +129,11 @@ PAIRCUE_TRANSCRIPTION_MODEL=whisper-1
 `whisper-1` is the safe default because its documented API supports timestamped `verbose_json`
 segments. A compatible self-hosted endpoint can also be used. Transcription is off by default and
 sends extracted audio to the configured endpoint when enabled. FFmpeg is required and not bundled.
+Remote endpoints require HTTPS and an API key; loopback endpoints may use HTTP without a key.
+
+With **Do everything automatically** selected in visual setup, this stage becomes the final
+fallback after existing and downloaded source subtitles. PairCue does not upload audio when it has
+already found a usable source track.
 
 ## Pair two existing subtitle languages
 

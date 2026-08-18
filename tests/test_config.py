@@ -13,21 +13,49 @@ def test_exposed_core_requires_a_strong_token() -> None:
         PairCueSettings(api_host="0.0.0.0", api_token="short")
 
 
-def test_translation_requires_a_key() -> None:
+def test_remote_translation_requires_a_key() -> None:
     with pytest.raises(ValidationError, match="TRANSLATION_API_KEY"):
         PairCueSettings(translation_enabled=True, translation_api_key="")
 
 
-def test_openai_transcription_requires_a_key_but_local_endpoint_does_not() -> None:
+def test_local_translation_can_run_without_a_key() -> None:
+    settings = PairCueSettings(
+        translation_enabled=True,
+        translation_base_url="http://127.0.0.1:11434/v1",
+    )
+
+    assert settings.translation_api_key.get_secret_value() == ""
+
+
+def test_remote_transcription_requires_a_key_but_local_endpoint_does_not() -> None:
     with pytest.raises(ValidationError, match="TRANSCRIPTION_API_KEY"):
         PairCueSettings(transcription_enabled=True)
 
     settings = PairCueSettings(
         transcription_enabled=True,
-        transcription_base_url="http://whisper:9000/v1",
+        transcription_base_url="http://localhost:9000/v1",
     )
 
     assert settings.transcription_model == "whisper-1"
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["translation_base_url", "fallback_base_url", "transcription_base_url"],
+)
+def test_remote_ai_endpoints_must_use_https(field: str) -> None:
+    with pytest.raises(ValidationError, match="must use https"):
+        PairCueSettings(**{field: "http://ai.example.com/v1"})
+
+
+def test_loopback_ai_endpoints_may_use_http() -> None:
+    settings = PairCueSettings(
+        translation_base_url="http://[::1]:11434/v1",
+        transcription_base_url="http://model.localhost:9000/v1",
+    )
+
+    assert settings.translation_base_url.startswith("http://")
+    assert settings.transcription_base_url.startswith("http://")
 
 
 def test_opensubtitles_credentials_require_api_key_and_complete_pair() -> None:
@@ -49,6 +77,7 @@ def test_glm_thinking_is_disabled_by_default() -> None:
     settings = PairCueSettings()
 
     assert settings.translation_disable_thinking is True
+    assert settings.translation_final_check_enabled is True
     assert settings.fallback_disable_thinking is False
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -12,6 +13,16 @@ from paircue.languages import canonicalize_language_tag, language_name
 
 def _secret_value(secret: SecretStr) -> str:
     return secret.get_secret_value()
+
+
+def _is_loopback_url(value: str) -> bool:
+    hostname = (urlparse(value).hostname or "").rstrip(".").casefold()
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
 
 
 class PairCueSettings(BaseSettings):
@@ -80,6 +91,7 @@ class PairCueSettings(BaseSettings):
     translation_api_key: SecretStr = SecretStr("")
     translation_model: str = "glm-5-turbo"
     translation_disable_thinking: bool = True
+    translation_final_check_enabled: bool = True
     translation_batch_size: int = Field(default=30, ge=1, le=50)
     translation_timeout_seconds: float = Field(default=120, ge=5, le=600)
     translation_max_attempts: int = Field(default=3, ge=1, le=6)
@@ -114,6 +126,13 @@ class PairCueSettings(BaseSettings):
             raise ValueError("credentials must not be embedded in service URLs")
         return value.rstrip("/")
 
+    @field_validator("translation_base_url", "fallback_base_url", "transcription_base_url")
+    @classmethod
+    def validate_ai_provider_transport(cls, value: str) -> str:
+        if value and urlparse(value).scheme == "http" and not _is_loopback_url(value):
+            raise ValueError("AI provider URLs must use https unless the host is local loopback")
+        return value
+
     @field_validator("source_language", "target_language")
     @classmethod
     def validate_language(cls, value: str) -> str:
@@ -140,15 +159,23 @@ class PairCueSettings(BaseSettings):
         exposed = self.api_host not in {"127.0.0.1", "::1", "localhost"}
         if (self.webhook_enabled or exposed) and len(token) < 32:
             raise ValueError("PAIRCUE_API_TOKEN must contain at least 32 characters")
-        if self.translation_enabled and not _secret_value(self.translation_api_key):
-            raise ValueError("translation is enabled but PAIRCUE_TRANSLATION_API_KEY is empty")
         if (
-            self.transcription_enabled
-            and urlparse(self.transcription_base_url).hostname == "api.openai.com"
-            and not _secret_value(self.transcription_api_key)
+            self.translation_enabled
+            and not _secret_value(self.translation_api_key)
+            and not _is_loopback_url(self.translation_base_url)
         ):
             raise ValueError(
-                "transcription uses api.openai.com but PAIRCUE_TRANSCRIPTION_API_KEY is empty"
+                "translation is enabled for a remote provider but "
+                "PAIRCUE_TRANSLATION_API_KEY is empty"
+            )
+        if (
+            self.transcription_enabled
+            and not _secret_value(self.transcription_api_key)
+            and not _is_loopback_url(self.transcription_base_url)
+        ):
+            raise ValueError(
+                "transcription is enabled for a remote provider but "
+                "PAIRCUE_TRANSCRIPTION_API_KEY is empty"
             )
         opensubtitles_password = _secret_value(self.opensubtitles_password)
         opensubtitles_key = _secret_value(self.opensubtitles_api_key)

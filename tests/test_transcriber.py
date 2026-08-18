@@ -1,3 +1,5 @@
+import csv
+import subprocess
 from datetime import timedelta
 from pathlib import Path
 
@@ -58,6 +60,34 @@ def test_transcription_request_uses_timestamped_multipart_contract(tmp_path: Pat
     assert cues[0].start == timedelta(seconds=301.25)
     assert cues[0].end == timedelta(seconds=302.5)
     assert cues[0].content == "hello world"
+
+
+def test_audio_segmentation_rejects_non_local_ffmpeg_protocols(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transcriber = _transcriber(tmp_path, httpx.MockTransport(lambda _: httpx.Response(500)))
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"media")
+    output_directory = tmp_path / "segments"
+    output_directory.mkdir()
+    command: list[str] = []
+
+    def fake_run(arguments: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        command.extend(arguments)
+        chunk = output_directory / "chunk-00000.flac"
+        chunk.write_bytes(b"audio")
+        with (output_directory / "chunks.csv").open("w", newline="", encoding="utf-8") as file:
+            csv.writer(file).writerow([chunk.name, "0", "1"])
+        return subprocess.CompletedProcess(arguments, 0, "", "")
+
+    monkeypatch.setattr("paircue.services.transcriber.shutil.which", lambda _: "ffmpeg")
+    monkeypatch.setattr("paircue.services.transcriber.subprocess.run", fake_run)
+
+    chunks = transcriber._segment_audio(media, output_directory)
+
+    assert len(chunks) == 1
+    assert command[command.index("-protocol_whitelist") + 1] == "file,crypto,data"
 
 
 def test_transcribe_combines_chunks_and_writes_only_complete_srt(

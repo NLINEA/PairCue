@@ -236,9 +236,15 @@ class SubtitlePipeline:
             action = "generated and translated"
         else:
             action = "aligned and translated" if synchronized else "translated"
+        quality_suffix = (
+            "; AI final quality check passed"
+            if getattr(self.translator, "final_check_enabled", False)
+            else ""
+        )
         return ProcessResult(
             "completed",
-            f"{action} {len(source)} cues from {self.source_language} to {self.target_language}",
+            f"{action} {len(source)} cues from {self.source_language} to "
+            f"{self.target_language}{quality_suffix}",
             (translated_path, bilingual_path),
         )
 

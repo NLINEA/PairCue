@@ -46,6 +46,17 @@ When translation is enabled, it sends subtitle dialogue to the configured endpoi
 are disabled or unconfigured by default; review the provider's access, retention, and privacy terms
 before enabling either one.
 
+Remote translation and transcription endpoints must use HTTPS and require their own API key.
+Loopback endpoints (`localhost`, `127.0.0.0/8`, or `::1`) may use HTTP and may omit a key for a
+model running on the same device. PairCue does not implement unofficial OAuth flows or reuse a
+consumer AI-product login.
+
+The optional AI final quality check sends only source text, the draft translation, language/style
+settings, title or episode context, and the local glossary through the same configured translation
+provider. It never sends media, audio, local paths, media-server credentials, or the provider key
+in the request body. The model cannot alter subtitle timing. PairCue rejects incomplete, extra,
+empty, malformed, or oversized responses before writing either translated output.
+
 PairCue does not collect model conversations, prompts used to develop the project, editor history,
 or local AI-assistant metadata. Those materials are not runtime inputs and are blocked from release
 artifacts by project policy and automated private-context checks.

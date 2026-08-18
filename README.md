@@ -70,10 +70,10 @@ No Python or terminal is required. Download, unzip, then open **PairCue**.
 
 | Your computer | Beta download |
 |---|---|
-| Apple silicon Mac | [PairCue for Apple silicon](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-macOS-arm64.zip) |
-| Intel Mac | [PairCue for Intel Mac](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-macOS-x64.zip) |
-| Windows | [PairCue for Windows](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-windows-x64.zip) |
-| Linux | [PairCue for Linux](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-linux-x64.tar.gz) |
+| Apple silicon Mac | [PairCue for Apple silicon](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b14/PairCue-macOS-arm64.zip) |
+| Intel Mac | [PairCue for Intel Mac](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b14/PairCue-macOS-x64.zip) |
+| Windows | [PairCue for Windows](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b14/PairCue-windows-x64.zip) |
+| Linux | [PairCue for Linux](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b14/PairCue-linux-x64.tar.gz) |
 
 The beta apps are not yet signed. On macOS, right-click PairCue and choose **Open** the first time.
 Windows may show an unrecognized-publisher warning. Download only from this repository; every
@@ -106,13 +106,14 @@ PairCue takes the least invasive route that can produce a complete result:
 
 ```text
 existing tracks → optional subtitle search → optional speech generation
-                → optional translation → timing alignment → Movie.mul.srt
+                → timing alignment → optional translation → AI final check → Movie.mul.srt
 ```
 
 - Two existing languages are paired without a translation provider.
 - Search uses the documented OpenSubtitles.com API and your own account or key.
 - Speech generation and translation are opt-in and use the endpoint you configure.
-- A translation is published only when every cue has a valid result.
+- When enabled, the AI final check reviews the draft through that same translation connection.
+- A translation is published only when every cue passes both completeness checks.
 - A previous bilingual output is never overwritten.
 
 FFmpeg is optional and not bundled. Pairing two SRT files, the safe demo, search, and translation
@@ -144,6 +145,8 @@ The media servers below can be discovered directly; other players simply read th
   private AI-context patterns without printing suspected values.
 - Media stays local unless you explicitly enable a transcription provider; subtitle dialogue stays
   local unless you explicitly enable search or translation.
+- AI requests never include video, local paths, media-server credentials, or API keys in their
+  request body. Remote AI endpoints must use HTTPS; loopback AI can run without a key.
 - Each release runs tests, dependency vulnerability and license checks, and includes an SBOM plus
   checksums.
 

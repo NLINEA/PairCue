@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.0b14 - 2026-08-19
+
+- Add an optional-by-setting, enabled-by-default AI final quality pass for translated subtitles.
+  It reviews meaning, omissions, wording, and glossary consistency through the same configured
+  provider, then fails closed unless every cue passes PairCue's validation again.
+- Make the visual **Do everything automatically** route fall back to speech generation only when
+  no existing or downloaded source subtitle can be found, then align, translate, quality-check,
+  and create the bilingual SRT.
+- Support user-owned remote OpenAI-compatible APIs and keyless loopback AI. Require HTTPS and an
+  API key for remote translation or transcription; PairCue does not use unofficial OAuth flows.
+- Keep video, audio timing, local paths, media-server credentials, and API keys out of translation
+  and final-check request bodies. Bound AI request/response sizes and refuse redirects.
+- Reject subtitle symlinks and oversized SRT inputs, restrict FFmpeg to local-media protocols, pin
+  every GitHub Action by commit SHA, and enable extended CodeQL default scanning.
+- Add a public security best-practices report covering fixed findings, verification, residual
+  distribution risks, and the release gate.
+
 ## 0.1.0b13 - 2026-08-18
 
 - Preserve existing source and target subtitles byte-for-byte by default: audio alignment now uses

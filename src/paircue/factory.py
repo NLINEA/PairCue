@@ -92,6 +92,7 @@ def build_pipeline(settings: PairCueSettings) -> SubtitlePipeline:
             target_language=settings.target_language,
             target_language_name=settings.effective_target_language_name,
             target_language_style=settings.target_language_style,
+            final_check_enabled=settings.translation_final_check_enabled,
         )
 
     transcriber = None

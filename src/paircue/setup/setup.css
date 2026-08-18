@@ -786,6 +786,35 @@ summary {
   border-top: 1px solid var(--line);
 }
 
+.quality-check-option {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 15px;
+  border: 1px solid #315347;
+  border-radius: 12px;
+  background: #10251e;
+  cursor: pointer;
+}
+
+.quality-check-option input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--mint);
+}
+
+.quality-check-option b,
+.quality-check-option small {
+  display: block;
+}
+
+.quality-check-option small {
+  margin-top: 5px;
+}
+
 [hidden] {
   display: none !important;
 }

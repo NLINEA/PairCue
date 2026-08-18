@@ -150,7 +150,10 @@ def test_sync_applies_only_the_confident_offset(
     audio_activity = np.zeros(220, dtype=np.bool_)
     audio_activity[np.flatnonzero(subtitle_activity) + 15] = True
 
+    command: list[str] = []
+
     def fake_run(arguments: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        command.extend(arguments)
         Path(arguments[-1]).write_bytes(b"temporary pcm" * 10)
         return subprocess.CompletedProcess(arguments, 0, "", "")
 
@@ -164,3 +167,4 @@ def test_sync_applies_only_the_confident_offset(
     shifted = list(srt.parse(subtitle_path.read_text(encoding="utf-8")))
     assert shifted[0].start == cues[0].start + timedelta(seconds=1.5)
     assert not list(tmp_path.glob("*.paircue-sync.wav"))
+    assert command[command.index("-protocol_whitelist") + 1] == "file,crypto,data"

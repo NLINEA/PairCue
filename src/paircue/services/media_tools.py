@@ -30,6 +30,7 @@ def _required_binary(name: str) -> str:
 
 
 TEXT_SUBTITLE_CODECS = {"subrip", "srt", "ass", "ssa", "webvtt", "mov_text"}
+LOCAL_MEDIA_PROTOCOLS = "file,crypto,data"
 
 
 def ensure_media_path(path: Path, media_root: Path) -> Path:
@@ -57,6 +58,8 @@ class EmbeddedSubtitleExtractor:
                     "-show_streams",
                     "-select_streams",
                     "s",
+                    "-protocol_whitelist",
+                    LOCAL_MEDIA_PROTOCOLS,
                     str(media_path),
                 ],
                 capture_output=True,
@@ -100,6 +103,8 @@ class EmbeddedSubtitleExtractor:
                         "-v",
                         "error",
                         "-y",
+                        "-protocol_whitelist",
+                        LOCAL_MEDIA_PROTOCOLS,
                         "-i",
                         str(media_path),
                         "-map",
@@ -163,6 +168,8 @@ class SubtitleSynchronizer:
                     "-v",
                     "error",
                     "-y",
+                    "-protocol_whitelist",
+                    LOCAL_MEDIA_PROTOCOLS,
                     "-i",
                     str(media_path),
                     "-vn",

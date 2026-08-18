@@ -67,11 +67,16 @@ def run_diagnostics(settings: PairCueSettings) -> list[DiagnosticCheck]:
 
     if settings.translation_enabled:
         host = urlparse(settings.translation_base_url).hostname or "configured endpoint"
+        final_check = (
+            "; AI final quality check enabled"
+            if settings.translation_final_check_enabled
+            else "; AI final quality check disabled"
+        )
         checks.append(
             DiagnosticCheck(
                 "Bilingual translation",
                 "ok",
-                f"{settings.translation_model} via {host}",
+                f"{settings.translation_model} via {host}{final_check}",
             )
         )
     else:

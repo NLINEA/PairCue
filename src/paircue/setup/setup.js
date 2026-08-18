@@ -43,6 +43,17 @@ function checked(id) {
   return byId(id).checked;
 }
 
+function isLoopbackHost(hostname) {
+  const normalized = hostname.toLowerCase().replace(/\.$/, "");
+  if (normalized === "localhost" || normalized.endsWith(".localhost")) {
+    return true;
+  }
+  if (/^127(?:\.\d{1,3}){3}$/.test(normalized) || normalized === "::1") {
+    return true;
+  }
+  return false;
+}
+
 function quote(raw) {
   if (/[\u0000-\u001F]/.test(raw)) {
     throw new Error("Configuration values cannot contain control characters.");
@@ -140,6 +151,10 @@ function buildConfig(maskSecrets = false) {
     configLine("PAIRCUE_TRANSLATION_BASE_URL", value("translation-url")),
     configLine("PAIRCUE_TRANSLATION_API_KEY", secretValue("translation-key", maskSecrets)),
     configLine("PAIRCUE_TRANSLATION_MODEL", value("translation-model")),
+    configLine(
+      "PAIRCUE_TRANSLATION_FINAL_CHECK_ENABLED",
+      String(checked("translation-final-check-enabled")),
+    ),
     "",
     "# Speech transcription fallback",
     configLine("PAIRCUE_TRANSCRIPTION_ENABLED", String(checked("transcription-enabled"))),
@@ -235,13 +250,13 @@ function showDetailsStage() {
 function updateSubtitlePreset() {
   const preset = form.querySelector('input[name="subtitle-preset"]:checked').value;
   const choices = {
-    both: { search: false, translation: false },
-    one: { search: false, translation: true },
-    automatic: { search: true, translation: true },
+    both: { search: false, translation: false, transcription: false },
+    one: { search: false, translation: true, transcription: false },
+    automatic: { search: true, translation: true, transcription: true },
   };
   byId("search-enabled").checked = choices[preset].search;
   byId("translation-enabled").checked = choices[preset].translation;
-  byId("transcription-enabled").checked = false;
+  byId("transcription-enabled").checked = choices[preset].transcription;
   setPanelEnabled("search-enabled", "search-panel");
   setPanelEnabled("translation-enabled", "translation-panel");
   setPanelEnabled("transcription-enabled", "transcription-panel");
@@ -349,18 +364,41 @@ function validate() {
   }
   if (checked("translation-enabled")) {
     valid = requireField("translation-url", "Enter the translation endpoint.") && valid;
-    valid = requireField("translation-key", "Add the translation API key or disable translation.") && valid;
     valid = requireField("translation-model", "Enter the translation model.") && valid;
+    try {
+      const endpoint = new URL(value("translation-url"));
+      if (endpoint.protocol !== "https:" && !isLoopbackHost(endpoint.hostname)) {
+        byId("translation-url").setCustomValidity(
+          "Use HTTPS, or a localhost address for AI running on this device.",
+        );
+        valid = false;
+      }
+      if (!isLoopbackHost(endpoint.hostname)) {
+        valid = requireField(
+          "translation-key",
+          "Add your API key, or use a localhost AI endpoint that needs no key.",
+        ) && valid;
+      }
+    } catch {
+      byId("translation-url").setCustomValidity("Enter a valid translation URL.");
+      valid = false;
+    }
   }
   if (checked("transcription-enabled")) {
     valid = requireField("transcription-url", "Enter the transcription endpoint.") && valid;
     valid = requireField("transcription-model", "Enter the transcription model.") && valid;
     try {
-      const host = new URL(value("transcription-url")).hostname;
-      if (host === "api.openai.com") {
+      const endpoint = new URL(value("transcription-url"));
+      if (endpoint.protocol !== "https:" && !isLoopbackHost(endpoint.hostname)) {
+        byId("transcription-url").setCustomValidity(
+          "Use HTTPS, or a localhost address for speech AI running on this device.",
+        );
+        valid = false;
+      }
+      if (!isLoopbackHost(endpoint.hostname)) {
         valid = requireField(
           "transcription-key",
-          "OpenAI transcription requires an API key.",
+          "Add your API key, or use a localhost speech endpoint that needs no key.",
         ) && valid;
       }
     } catch {
@@ -802,6 +840,7 @@ secretIds.forEach((id) => {
   });
 });
 
+updateSubtitlePreset();
 updateMode();
 updatePreview();
 updateSystemReadiness();

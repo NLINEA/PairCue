@@ -3,21 +3,12 @@
 
 from __future__ import annotations
 
-import argparse
 import platform
 import shutil
 import subprocess
 import sys
 from importlib.metadata import version
 from pathlib import Path
-
-
-def _arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dist-dir", type=Path, default=Path("dist/desktop"))
-    parser.add_argument("--work-dir", type=Path, default=Path("build/desktop"))
-    parser.add_argument("--stage-dir", type=Path, default=Path("release/stage"))
-    return parser.parse_args()
 
 
 def _scoped(root: Path, candidate: Path) -> Path:
@@ -63,11 +54,12 @@ def _run(command: list[str], root: Path) -> None:
 
 
 def main() -> int:
-    arguments = _arguments()
     root = Path(__file__).resolve().parents[1]
-    dist_dir = _scoped(root, arguments.dist_dir)
-    work_dir = _scoped(root, arguments.work_dir)
-    stage_parent = _scoped(root, arguments.stage_dir)
+    # Release paths are deliberately fixed. Accepting path arguments here would make destructive
+    # cleanup and the packaged-executable smoke test depend on untrusted command-line input.
+    dist_dir = _scoped(root, Path("dist/desktop"))
+    work_dir = _scoped(root, Path("build/desktop"))
+    stage_parent = _scoped(root, Path("release/stage"))
     system, architecture = _labels()
     stage = stage_parent / f"PairCue-{system}-{architecture}"
 

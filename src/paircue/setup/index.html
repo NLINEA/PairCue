@@ -318,15 +318,15 @@
               </label>
               <label class="preset-card">
                 <input type="radio" name="subtitle-preset" value="automatic" checked>
-                <span class="choice-title">I’m not sure—find them</span>
-                <span>PairCue shows only the services it needs</span>
+                <span class="choice-title">Do everything automatically</span>
+                <span>Find, generate, translate, check, and pair</span>
               </label>
             </div>
             <div class="journey-note">
-              PairCue tries the enabled options in order and stops as soon as it has enough. Speech
-              generation stays optional because it uploads audio and may cost more. Provider API
-              keys come from your own accounts. They stay in your private local config and are sent
-              only to the provider you choose.
+              PairCue tries the enabled options in order and stops as soon as it has enough. Full
+              automation uses speech generation only when no source subtitle can be found; you can
+              turn it off below. Provider API keys come from your own accounts. They stay in your
+              private local config and are sent only to the provider you choose.
             </div>
 
             <div class="automation-stack">
@@ -368,10 +368,23 @@
                   <label>
                     <span>Translation provider API key</span>
                     <input id="translation-key" type="password" autocomplete="new-password">
-                    <small>Subtitle dialogue is sent to this provider for translation.</small>
+                    <small>
+                      Required for remote providers; optional for AI running on this device.
+                    </small>
+                  </label>
+                  <label class="quality-check-option">
+                    <input id="translation-final-check-enabled" type="checkbox" checked>
+                    <span>
+                      <b>Run an AI final quality check</b>
+                      <small>
+                        A second pass checks meaning, omissions, wording, and glossary consistency
+                        before any subtitle is saved. It uses the same AI connection and never sees
+                        your video or file paths.
+                      </small>
+                    </span>
                   </label>
                   <details class="advanced provider-details">
-                    <summary>Use a different compatible provider</summary>
+                    <summary>Connect your own or local AI</summary>
                     <label>
                       <span>Translation endpoint</span>
                       <input
@@ -399,14 +412,17 @@
                   <label class="switch">
                     <input id="transcription-enabled" type="checkbox">
                     <span aria-hidden="true"></span>
-                    <b>Optional</b>
+                    <b>Fallback</b>
                   </label>
                 </div>
                 <div id="transcription-panel" class="field-grid compact-fields" hidden>
                   <label>
-                    <span>OpenAI API key</span>
+                    <span>Speech-to-text API key</span>
                     <input id="transcription-key" type="password" autocomplete="new-password">
-                    <small>Audio is uploaded only when no source subtitle can be found.</small>
+                    <small>
+                      Audio is used only when no source subtitle can be found. A local endpoint can
+                      run without a key and keeps the audio on this device.
+                    </small>
                   </label>
                   <details class="advanced provider-details">
                     <summary>Use a self-hosted or compatible provider</summary>

@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 MAX_AUDIO_CHUNK_BYTES = 24 * 1024 * 1024
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 MAX_SEGMENTS_PER_CHUNK = 20_000
+LOCAL_MEDIA_PROTOCOLS = "file,crypto,data"
 
 
 class TranscriptionError(RuntimeError):
@@ -110,6 +111,8 @@ class OpenAICompatibleTranscriber:
                 "-v",
                 "error",
                 "-y",
+                "-protocol_whitelist",
+                LOCAL_MEDIA_PROTOCOLS,
                 "-i",
                 str(media_path),
                 "-map",

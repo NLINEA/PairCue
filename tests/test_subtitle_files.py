@@ -11,6 +11,7 @@ from paircue.services.subtitle_files import (
     discover_sidecars,
     find_language_sidecar,
     merge_bilingual_subtitles,
+    parse_srt,
     sidecar_path,
     translated_subtitles,
 )
@@ -70,6 +71,34 @@ def test_custom_language_sidecar_matches_common_three_letter_tag(tmp_path: Path)
     japanese.write_text("x", encoding="utf-8")
 
     assert find_language_sidecar(media, "ja") == japanese
+
+
+def test_subtitle_parser_refuses_symbolic_links(tmp_path: Path) -> None:
+    private_text = tmp_path / "private.txt"
+    private_text.write_text(
+        "1\n00:00:00,000 --> 00:00:01,000\nprivate\n\n",
+        encoding="utf-8",
+    )
+    subtitle = tmp_path / "Movie.en.srt"
+    subtitle.symlink_to(private_text)
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        parse_srt(subtitle)
+
+
+def test_subtitle_parser_refuses_oversized_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subtitle = tmp_path / "Movie.en.srt"
+    subtitle.write_text(
+        "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("paircue.services.subtitle_files.MAX_SUBTITLE_BYTES", 10)
+
+    with pytest.raises(ValueError, match="safe limit"):
+        parse_srt(subtitle)
 
 
 def test_bilingual_sidecar_uses_standard_multiple_languages_tag(tmp_path: Path) -> None:
