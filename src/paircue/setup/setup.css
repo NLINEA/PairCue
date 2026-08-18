@@ -317,6 +317,61 @@ h1 span {
   color: var(--ink);
 }
 
+.quick-pair-card {
+  margin-top: 18px;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #426155;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(23, 61, 49, 0.72), rgba(17, 26, 24, 0.9));
+}
+
+.quick-pair-card h3 {
+  margin-bottom: 7px;
+  font-size: 1.2rem;
+}
+
+.quick-pair-card p:not(.step-kicker) {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.quick-pair-card button {
+  min-height: 48px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--mint);
+  color: #07110e;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.quick-pair-actions {
+  min-width: 220px;
+  display: grid;
+  gap: 10px;
+}
+
+.quick-pair-actions label > span {
+  font-size: 0.74rem;
+}
+
+.quick-pair-card button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.quick-pair-status {
+  grid-column: 1 / -1;
+  min-height: 1.4em;
+  color: var(--mint) !important;
+}
+
 .library-options {
   margin-top: 30px;
 }
@@ -773,6 +828,18 @@ footer {
 
   .automation-head {
     flex-direction: column;
+  }
+
+  .quick-pair-card {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-pair-card button {
+    width: 100%;
+  }
+
+  .quick-pair-actions {
+    min-width: 0;
   }
 
   .finish {

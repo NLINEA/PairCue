@@ -75,6 +75,54 @@ def test_pair_command_will_not_overwrite_an_input(
     assert "must not overwrite" in capsys.readouterr().err
 
 
+def test_desktop_quick_pair_creates_a_new_local_output_without_overwriting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "Movie.ja.srt"
+    target = tmp_path / "Movie.en.srt"
+    source.write_text(SOURCE, encoding="utf-8")
+    target.write_text(TARGET, encoding="utf-8")
+    selections = iter((source, target, source, target))
+    monkeypatch.setattr(cli, "_choose_subtitle_path", lambda role: next(selections))
+    revealed: list[Path] = []
+    monkeypatch.setattr(cli, "_reveal_path", revealed.append)
+
+    first = cli._quick_pair_subtitles("target-first")
+    second = cli._quick_pair_subtitles("target-first")
+
+    assert first is not None
+    assert second is not None
+    assert first.output == tmp_path / "Movie.en.cc.srt"
+    assert second.output == tmp_path / "Movie.en.cc-2.srt"
+    assert "你好\n世界\nHello world" in first.output.read_text(encoding="utf-8")
+    assert source.read_text(encoding="utf-8") == SOURCE
+    assert target.read_text(encoding="utf-8") == TARGET
+    assert revealed == [first.output, second.output]
+
+
+def test_desktop_quick_pair_removes_its_reservation_when_writing_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "Movie.ja.srt"
+    target = tmp_path / "Movie.en.srt"
+    source.write_text(SOURCE, encoding="utf-8")
+    target.write_text(TARGET, encoding="utf-8")
+    selections = iter((source, target))
+    monkeypatch.setattr(cli, "_choose_subtitle_path", lambda role: next(selections))
+    monkeypatch.setattr(
+        cli,
+        "write_srt",
+        lambda path, subtitles: (_ for _ in ()).throw(PermissionError("private path")),
+    )
+
+    with pytest.raises(cli.SetupQuickPairError, match="permissions"):
+        cli._quick_pair_subtitles("target-first")
+
+    assert not (tmp_path / "Movie.en.cc.srt").exists()
+
+
 def test_setup_command_opens_packaged_private_wizard(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -150,6 +198,19 @@ def test_bare_paircue_opens_setup_and_reports_saved_file(
     assert f"Saved private configuration: {output}" in capsys.readouterr().out
 
 
+def test_desktop_quick_pair_can_finish_without_saving_setup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "Movie.en.cc.srt"
+    state = SetupState(threading.Event(), quick_pair_output=output)
+    monkeypatch.setattr("paircue.cli.run_setup_wizard", lambda *args, **kwargs: state)
+
+    assert main([]) == 0
+    assert f"Created bilingual subtitle: {output}" in capsys.readouterr().out
+
+
 def test_bare_paircue_continues_from_setup_to_native_video_picker(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -183,12 +244,14 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
         desktop: bool,
         connection_test: object,
         choose_folder: object,
+        quick_pair: object,
     ) -> SetupState:
         assert callable(on_single_saved)
         assert on_library_saved is None
         assert desktop is False
         assert connection_test is None
         assert choose_folder is None
+        assert quick_pair is None
         on_single_saved(state)
         return state
 
@@ -248,11 +311,13 @@ def test_desktop_library_setup_starts_dashboard_before_leaving_the_wizard(
         desktop: bool,
         connection_test: object,
         choose_folder: object,
+        quick_pair: object,
     ) -> SetupState:
         assert desktop is True
         assert callable(on_library_saved)
         assert callable(connection_test)
         assert callable(choose_folder)
+        assert callable(quick_pair)
         on_library_saved(state)
         return state
 

@@ -46,6 +46,11 @@ they are relevant. Press **Save and choose a video**, then select one movie or e
 file window. Progress and the final result stay visible on the setup page; a successful bilingual
 subtitle is revealed in Finder or your file manager.
 
+If you already have two SRT files, the desktop setup shows **Pair two SRTs now** immediately after
+the platform and starting choice. Choose the spoken subtitle first and the learning subtitle
+second. PairCue creates and reveals a new `.cc.srt` without saving setup, using an account, or
+uploading either file, then finishes the app run cleanly.
+
 The setup is stored only on this device and an older configuration is backed up before replacement.
 PairCue has no analytics, PairCue account, remote setup assets, or saved browser form data. Desktop
 builds use the operating system's private application-settings folder.
@@ -56,8 +61,9 @@ generation need a separate FFmpeg installation.
 
 ### Already have two subtitle files?
 
-Developers and command-line users can create a learning track without a media server, API key, or
-database:
+In the desktop app, press **Pair two SRTs now** and choose the two files. PairCue never overwrites
+the inputs or a previous paired result. Developers and command-line users can do the same without
+a media server, API key, or database:
 
 ```bash
 paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt

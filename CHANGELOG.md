@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0b9 - 2026-08-18
+
+- Add **Quick Pair** to the desktop setup so a first-time user can choose two existing SRT files
+  and receive a bilingual track without an account, API key, media server, or terminal command.
+- Use role-specific native file windows for the spoken and learning subtitle, then reveal the
+  finished file in the operating system's file manager.
+- Keep Quick Pair local and origin-protected, return only the output filename to the browser, and
+  limit each selected input to 16 MB.
+- Never overwrite either input or an earlier paired result; use a new numbered output when a
+  `.cc.srt` already exists.
+
 ## 0.1.0b8 - 2026-08-18
 
 - Add a self-contained local dashboard with live queue totals, recent filename-only results, and a

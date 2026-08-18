@@ -7,6 +7,11 @@ PairCue Desktop lets you start without installing Python or learning terminal co
 3. Then choose **Try one video** or **Automate my library**.
 4. Follow the private setup page opened in your browser.
 
+Already have two SRT files? Press **Pair two SRTs now**, choose the spoken subtitle and then the
+learning subtitle. PairCue creates a new bilingual `.cc.srt` locally, highlights it in the file
+manager, and does not require you to finish setup or add any API key.
+PairCue then ends that app run cleanly; reopen it whenever you want to pair another set.
+
 For one video, PairCue opens the system file picker and reports progress in the same setup page. A
 successful bilingual `.cc.srt` is highlighted in Finder or your file manager.
 

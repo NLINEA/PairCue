@@ -12,7 +12,7 @@ import tempfile
 import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import httpx
 import uvicorn
@@ -28,11 +28,15 @@ from paircue.models import MediaItem
 from paircue.services.download_station import DownloadStationClient
 from paircue.services.subtitle_files import merge_bilingual_subtitles, parse_srt, write_srt
 from paircue.setup_server import (
+    QuickPairResult,
     SetupConnectionError,
+    SetupQuickPairError,
     SetupState,
     parse_config_values,
     run_setup_wizard,
 )
+
+MAX_QUICK_PAIR_SUBTITLE_BYTES = 16 * 1024 * 1024
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -275,7 +279,11 @@ def _setup(*, no_open: bool) -> int:
         desktop=_is_frozen(),
         connection_test=test_library_connection if _is_frozen() else None,
         choose_folder=_choose_media_directory if _is_frozen() else None,
+        quick_pair=_quick_pair_subtitles if _is_frozen() else None,
     )
+    if state.quick_pair_output is not None:
+        print(f"Created bilingual subtitle: {state.quick_pair_output}")
+        return 0
     if state.output_path is None:
         return 1
     print(f"Saved private configuration: {state.output_path}")
@@ -677,6 +685,152 @@ def _choose_media_directory() -> Path | None:
         return None
     selected = result.stdout.strip()
     return Path(selected) if result.returncode == 0 and selected else None
+
+
+def _choose_subtitle_path(role: Literal["source", "target"]) -> Path | None:
+    """Open a native SRT chooser with role-specific wording."""
+
+    title = (
+        "Choose the spoken or source subtitle for PairCue"
+        if role == "source"
+        else "Choose the learning-language subtitle for PairCue"
+    )
+    command: list[str] | None = None
+    if sys.platform == "darwin" and Path("/usr/bin/osascript").is_file():
+        command = [
+            "/usr/bin/osascript",
+            "-e",
+            f'POSIX path of (choose file with prompt "{title}")',
+        ]
+    elif os.name == "nt":
+        powershell = shutil.which("powershell") or shutil.which("pwsh")
+        if powershell:
+            command = [
+                powershell,
+                "-NoProfile",
+                "-Command",
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$d=New-Object System.Windows.Forms.OpenFileDialog; "
+                f"$d.Title='{title}'; "
+                "$d.Filter='SubRip subtitles|*.srt'; "
+                "if($d.ShowDialog() -eq 'OK'){Write-Output $d.FileName}",
+            ]
+    else:
+        zenity = shutil.which("zenity")
+        kdialog = shutil.which("kdialog")
+        if zenity:
+            command = [
+                zenity,
+                "--file-selection",
+                f"--title={title}",
+                "--file-filter=SubRip subtitles | *.srt",
+            ]
+        elif kdialog:
+            command = [
+                kdialog,
+                "--getopenfilename",
+                "",
+                "SubRip subtitles (*.srt)",
+                "--title",
+                title,
+            ]
+    if command is None:
+        return None
+    try:
+        result = subprocess.run(  # noqa: S603 - fixed platform chooser and argument array
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    selected = result.stdout.strip()
+    return Path(selected) if result.returncode == 0 and selected else None
+
+
+def _quick_pair_subtitles(order: str) -> QuickPairResult | None:
+    """Choose and merge two local SRT files without accounts, uploads, or configuration."""
+
+    if order not in {"target-first", "source-first"}:
+        raise SetupQuickPairError("Choose which subtitle appears first.")
+    source = _choose_subtitle_path("source")
+    if source is None:
+        return None
+    target = _choose_subtitle_path("target")
+    if target is None:
+        return None
+    try:
+        source = _checked_quick_pair_input(source)
+        target = _checked_quick_pair_input(target)
+        if source == target:
+            raise SetupQuickPairError("Choose two different subtitle files.")
+        merged = merge_bilingual_subtitles(
+            parse_srt(source),
+            parse_srt(target),
+            order=cast(Literal["target-first", "source-first"], order),
+        )
+        output, reservation_inode = _reserve_quick_pair_output(target)
+        try:
+            write_srt(output, merged.subtitles)
+        except Exception:
+            _remove_quick_pair_reservation(output, reservation_inode)
+            raise
+    except SetupQuickPairError:
+        raise
+    except UnicodeError as exc:
+        raise SetupQuickPairError("One subtitle is not a valid UTF-8 SRT file.") from exc
+    except OSError as exc:
+        raise SetupQuickPairError(
+            "PairCue could not read or write those subtitle files. Check their permissions."
+        ) from exc
+    except ValueError as exc:
+        raise SetupQuickPairError(str(exc)) from None
+    _reveal_path(output)
+    return QuickPairResult(
+        output=output,
+        source_match_ratio=merged.source_match_ratio,
+        target_match_ratio=merged.target_match_ratio,
+    )
+
+
+def _checked_quick_pair_input(path: Path) -> Path:
+    resolved = path.expanduser().resolve(strict=True)
+    if not resolved.is_file() or resolved.suffix.casefold() != ".srt":
+        raise SetupQuickPairError("Choose two SRT subtitle files.")
+    if resolved.stat().st_size > MAX_QUICK_PAIR_SUBTITLE_BYTES:
+        raise SetupQuickPairError("Each subtitle file must be 16 MB or smaller.")
+    return resolved
+
+
+def _reserve_quick_pair_output(target: Path) -> tuple[Path, int]:
+    stem = target.stem
+    if stem.casefold().endswith(".cc"):
+        stem = stem[:-3]
+    names = (f"{stem}.cc.srt", *(f"{stem}.cc-{index}.srt" for index in range(2, 1000)))
+    for name in names:
+        candidate = target.with_name(name)
+        if candidate == target:
+            continue
+        try:
+            descriptor = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            continue
+        try:
+            inode = os.fstat(descriptor).st_ino
+        finally:
+            os.close(descriptor)
+        return candidate, inode
+    raise SetupQuickPairError("Too many paired copies already exist in this folder.")
+
+
+def _remove_quick_pair_reservation(path: Path, inode: int) -> None:
+    try:
+        stat = path.stat()
+        if stat.st_ino == inode and stat.st_size == 0:
+            path.unlink()
+    except OSError:
+        return
 
 
 def _reveal_path(path: Path) -> None:

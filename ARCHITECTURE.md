@@ -64,6 +64,10 @@ fragment, removes that fragment from browser history before its first API reques
 only in page memory, and returns filename-only results. Stopping or editing from the dashboard
 shuts the runtime down cleanly before the next action.
 
+Desktop Quick Pair is a separate zero-configuration path inside the same tokenized setup origin.
+The operating system chooses both SRT inputs, the existing independent timing matcher writes a new
+non-overwriting bilingual file, and only its filename and match ratios return to the browser.
+
 ## Processing contract
 
 1. Discover the item through the selected connector, map its path under the configured media root,

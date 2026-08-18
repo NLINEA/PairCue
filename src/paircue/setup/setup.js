@@ -134,6 +134,7 @@ function updateMode() {
   const library = selectedMode() === "library";
   byId("library-options").hidden = !library;
   byId("single-note").hidden = library;
+  byId("quick-pair-card").hidden = library || !desktopApp;
   byId("download-config").textContent = library
     ? (desktopApp ? "Save and open dashboard" : "Save paircue.env")
     : "Save and choose a video";
@@ -534,6 +535,8 @@ async function updateAppContext() {
     const payload = await response.json();
     desktopApp = response.ok && payload.desktop === true;
     byId("choose-media-folder").hidden = !desktopApp;
+    byId("desktop-pair-note").hidden = !desktopApp;
+    byId("cli-pair-note").hidden = desktopApp;
     byId("local-port-field").hidden = desktopApp;
     byId("nas-permissions").hidden = desktopApp;
     updateMode();
@@ -569,6 +572,44 @@ async function chooseMediaFolder() {
   } finally {
     button.disabled = false;
     button.textContent = "Choose folder";
+  }
+}
+
+async function quickPairSubtitles() {
+  const token = new URLSearchParams(window.location.search).get("token");
+  if (!desktopApp || !token) {
+    return;
+  }
+  const button = byId("quick-pair");
+  const status = byId("quick-pair-status");
+  let completed = false;
+  button.disabled = true;
+  button.textContent = "Choose two subtitles…";
+  status.textContent = "First choose the spoken subtitle, then the learning subtitle.";
+  try {
+    const order = value("quick-pair-order");
+    const response = await fetch(
+      `/quick-pair?token=${encodeURIComponent(token)}&order=${encodeURIComponent(order)}`,
+      { method: "POST" },
+    );
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.message || "PairCue could not pair those subtitles.");
+    }
+    if (!payload.completed) {
+      status.textContent = payload.message;
+      return;
+    }
+    completed = true;
+    status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. PairCue has finished; reopen the app to pair another.`;
+    button.textContent = "Pairing complete";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = completed;
+    if (button.textContent === "Choose two subtitles…") {
+      button.textContent = "Pair two SRTs now";
+    }
   }
 }
 
@@ -621,6 +662,7 @@ byId("swap-languages").addEventListener("click", () => {
 byId("copy-config").addEventListener("click", copyConfig);
 byId("download-config").addEventListener("click", saveConfig);
 byId("choose-media-folder").addEventListener("click", chooseMediaFolder);
+byId("quick-pair").addEventListener("click", quickPairSubtitles);
 
 secretIds.forEach((id) => {
   byId(id).addEventListener("paste", () => {

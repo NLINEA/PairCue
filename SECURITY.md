@@ -20,6 +20,10 @@ with its one-time URL token and matching local Origin. It loads no remote assets
 `paircue.env` files and automatic backups use owner-only permissions; they contain secrets and must
 never be committed or shared.
 
+Desktop Quick Pair accepts actions only from the tokenized same-origin setup page. Its two SRT
+inputs are read directly from paths returned by native operating-system file windows, are limited
+to 16 MB each, and are never uploaded. The browser receives only the new output filename.
+
 Frozen desktop apps store that file under `~/Library/Application Support/PairCue` on macOS,
 `%APPDATA%\\PairCue` on Windows, or `$XDG_CONFIG_HOME/paircue` (normally `~/.config/paircue`) on
 Linux. Source installs retain `paircue.env` in the folder where setup was started.

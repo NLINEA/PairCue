@@ -64,6 +64,7 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert 'fetch("/context"' in javascript
     assert 'fetch(`/test-platform?token=' in javascript
     assert 'fetch(`/choose-folder?token=' in javascript
+    assert 'fetch(\n      `/quick-pair?token=' in javascript
     assert "No Docker or terminal command required." in javascript
 
 

@@ -43,6 +43,8 @@ class SetupState:
     outputs: tuple[Path, ...] = ()
     action_url: str = ""
     delivered: threading.Event = field(default_factory=threading.Event)
+    quick_pair_completed: threading.Event = field(default_factory=threading.Event)
+    quick_pair_output: Path | None = None
     _progress_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def update_progress(
@@ -74,6 +76,17 @@ class SetupConnectionError(ValueError):
     """A secret-safe connection failure that may be shown in the setup page."""
 
 
+class SetupQuickPairError(ValueError):
+    """A safe local subtitle-pairing failure that may be shown in the setup page."""
+
+
+@dataclass(frozen=True, slots=True)
+class QuickPairResult:
+    output: Path
+    source_match_ratio: float
+    target_match_ratio: float
+
+
 class SetupHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -85,6 +98,7 @@ class SetupHTTPServer(ThreadingHTTPServer):
         desktop: bool = False,
         connection_test: Callable[[str], str] | None = None,
         choose_folder: Callable[[], Path | None] | None = None,
+        quick_pair: Callable[[str], QuickPairResult | None] | None = None,
     ) -> None:
         super().__init__(("127.0.0.1", 0), SetupRequestHandler)
         self.assets_root = assets_root
@@ -93,8 +107,10 @@ class SetupHTTPServer(ThreadingHTTPServer):
         self.desktop = desktop
         self.connection_test = connection_test
         self.choose_folder = choose_folder
+        self.quick_pair = quick_pair
         self.state = SetupState(threading.Event())
         self.save_lock = threading.Lock()
+        self.quick_pair_lock = threading.Lock()
 
     @property
     def origin(self) -> str:
@@ -154,7 +170,7 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         supplied = parse_qs(parsed.query).get("token", [""])[0]
         if (
-            parsed.path not in {"/config", "/test-platform", "/choose-folder"}
+            parsed.path not in {"/config", "/test-platform", "/choose-folder", "/quick-pair"}
             or not self._trusted_host()
             or not hmac.compare_digest(supplied, self.server.token)
             or self.headers.get("Origin") != self.server.origin
@@ -180,6 +196,65 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                     "path": str(selected) if selected is not None else "",
                 },
             )
+            return
+        if parsed.path == "/quick-pair":
+            if self.server.quick_pair is None:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            order = parse_qs(parsed.query).get("order", [""])[0]
+            if order not in {"target-first", "source-first"}:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"completed": False, "message": "Choose which subtitle appears first."},
+                )
+                return
+            if not self.server.quick_pair_lock.acquire(blocking=False):
+                self._json_response(
+                    HTTPStatus.CONFLICT,
+                    {"completed": False, "message": "A Quick Pair window is already open."},
+                )
+                return
+            try:
+                try:
+                    result = self.server.quick_pair(order)
+                finally:
+                    self.server.quick_pair_lock.release()
+            except SetupQuickPairError as exc:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"completed": False, "message": str(exc)},
+                )
+                return
+            except Exception as exc:
+                log.warning("desktop Quick Pair failed (%s)", type(exc).__name__)
+                self._json_response(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {
+                        "completed": False,
+                        "message": "PairCue could not pair those subtitle files.",
+                    },
+                )
+                return
+            if result is None:
+                self._json_response(
+                    HTTPStatus.OK,
+                    {"completed": False, "message": "No subtitle files were changed."},
+                )
+                return
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "completed": True,
+                    "filename": result.output.name,
+                    "message": (
+                        "Created a bilingual subtitle "
+                        f"({result.source_match_ratio:.0%}/"
+                        f"{result.target_match_ratio:.0%} matched)."
+                    ),
+                },
+            )
+            self.server.state.quick_pair_output = result.output
+            self.server.state.quick_pair_completed.set()
             return
         if not self.headers.get("Content-Type", "").startswith("application/json"):
             self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
@@ -299,6 +374,7 @@ def run_setup_wizard(
     desktop: bool = False,
     connection_test: Callable[[str], str] | None = None,
     choose_folder: Callable[[], Path | None] | None = None,
+    quick_pair: Callable[[str], QuickPairResult | None] | None = None,
 ) -> SetupState:
     server = SetupHTTPServer(
         assets_root,
@@ -306,6 +382,7 @@ def run_setup_wizard(
         desktop=desktop,
         connection_test=connection_test,
         choose_folder=choose_folder,
+        quick_pair=quick_pair,
     )
     thread = threading.Thread(target=server.serve_forever, name="paircue-setup", daemon=True)
     thread.start()
@@ -317,7 +394,10 @@ def run_setup_wizard(
     print("Waiting for you to save the setup. Press Ctrl+C to cancel.")
     try:
         while not server.state.saved.wait(0.25):
-            continue
+            if server.state.quick_pair_completed.is_set():
+                break
+        if server.state.quick_pair_completed.is_set():
+            return server.state
         callback = on_single_saved if server.state.mode == "single" else on_library_saved
         if server.state.output_path is not None and callback is not None:
             try:

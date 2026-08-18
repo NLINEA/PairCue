@@ -5,7 +5,12 @@ from pathlib import Path
 import httpx
 
 import paircue
-from paircue.setup_server import SetupConnectionError, SetupHTTPServer, parse_config_values
+from paircue.setup_server import (
+    QuickPairResult,
+    SetupConnectionError,
+    SetupHTTPServer,
+    parse_config_values,
+)
 
 VALID_CONFIG = """PAIRCUE_PLATFORM="filesystem"
 PAIRCUE_SOURCE_LANGUAGE="en"
@@ -182,6 +187,56 @@ def test_desktop_folder_chooser_requires_setup_origin_and_returns_selected_path(
 
     assert rejected.status_code == 403
     assert selected.json() == {"selected": True, "path": str(media)}
+
+
+def test_desktop_quick_pair_is_origin_protected_and_returns_only_the_output_name(
+    tmp_path: Path,
+) -> None:
+    assets = Path(paircue.__file__).with_name("setup")
+    output = tmp_path / "Private Library" / "Movie.en.cc.srt"
+    observed_orders: list[str] = []
+
+    def quick_pair(order: str) -> QuickPairResult:
+        observed_orders.append(order)
+        return QuickPairResult(output, 0.95, 0.9)
+
+    server = SetupHTTPServer(
+        assets,
+        tmp_path / "paircue.env",
+        desktop=True,
+        quick_pair=quick_pair,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(base_url=server.origin) as client:
+            rejected = client.post(
+                f"/quick-pair?token={server.token}&order=target-first",
+            )
+            invalid = client.post(
+                f"/quick-pair?token={server.token}&order=unknown",
+                headers={"Origin": server.origin},
+            )
+            completed = client.post(
+                f"/quick-pair?token={server.token}&order=target-first",
+                headers={"Origin": server.origin},
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert rejected.status_code == 403
+    assert invalid.status_code == 400
+    assert completed.json() == {
+        "completed": True,
+        "filename": "Movie.en.cc.srt",
+        "message": "Created a bilingual subtitle (95%/90% matched).",
+    }
+    assert str(tmp_path) not in completed.text
+    assert observed_orders == ["target-first"]
+    assert server.state.quick_pair_output == output
+    assert server.state.quick_pair_completed.is_set()
 
 
 def test_setup_server_rejects_cross_origin_and_oversized_requests(tmp_path: Path) -> None:
