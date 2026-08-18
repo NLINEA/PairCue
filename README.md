@@ -2,11 +2,30 @@
 
 **Two languages. One perfectly timed track.**
 
-PairCue is a self-hosted bilingual subtitle engine that aligns, translates, and pairs subtitles
-into natural learning tracks for Plex, Jellyfin, Emby, and local media libraries. Choose any source
-and learning language; English to Traditional Chinese is only the default, not a limitation.
+Turn a private movie library into a language-learning library. PairCue finds or generates source
+subtitles, aligns them to the media, translates them, and writes one reusable bilingual SRT for
+Plex, Jellyfin, Emby, Kodi, Infuse, VLC, or a plain media folder.
+
+`existing subtitle → official search → speech transcription → translation → bilingual SRT`
+
+Choose any source and learning language; English to Traditional Chinese is only the default, not a
+limitation. PairCue creates standard sidecar files instead of requiring a browser extension or a
+custom video player.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
+
+## Try the unique part first
+
+Already have two subtitle files from the same movie? Create a learning track without configuring a
+media server, API key, or database:
+
+```bash
+python -m pip install .
+paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt
+```
+
+PairCue matches by time, including one-to-many cue differences, and refuses low-confidence pairs.
+Use `--order source-first` to reverse the two lines. Nothing is uploaded by this command.
 
 ## What it writes
 
@@ -26,8 +45,9 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 1. Copy `.env.example` to `.env` and set the NAS mount paths and UID/GID.
 2. Copy `paircue.env.example` to `paircue.env` and choose a platform and translation settings.
 3. Build the image with `docker compose build core`.
-4. Generate the API token with `docker run --rm paircue:0.1.0-beta.4 paircue generate-token`.
-5. Start the subtitle service:
+4. Check the installation with `docker compose run --rm core paircue doctor`.
+5. Generate the API token with `docker run --rm paircue:0.1.0-beta.5 paircue generate-token`.
+6. Start the subtitle service:
 
    ```bash
    docker compose up -d core
@@ -36,6 +56,14 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 Polling is the default, so no inbound port is required. Start with a test library or a copy of a
 few media files. This repository provides a Dockerfile for local builds; PairCue does not publish
 an official prebuilt container image.
+
+After startup, view queue and recent results through the protected status endpoint:
+
+```bash
+curl -H "Authorization: Bearer $PAIRCUE_API_TOKEN" http://127.0.0.1:9292/v1/status
+```
+
+It reports filenames rather than full media-library paths.
 
 ## Supported platforms
 
@@ -107,7 +135,9 @@ that provider's privacy policy and terms.
 
 PairCue has a small, independently written adapter for the documented OpenSubtitles.com REST API.
 It does not use Subliminal, scrape provider pages, or copy another subtitle product's client code.
-Create your own OpenSubtitles API consumer, then set:
+It computes the lightweight OpenSubtitles file hash and tries an exact release match before falling
+back to title, year, season, and episode metadata. Create your own OpenSubtitles API consumer, then
+set:
 
 ```dotenv
 PAIRCUE_SUBTITLE_DOWNLOAD_ENABLED=true
@@ -118,6 +148,25 @@ An OpenSubtitles account login is optional; if used, set both
 `PAIRCUE_OPENSUBTITLES_USERNAME` and `PAIRCUE_OPENSUBTITLES_PASSWORD`. Search/download is disabled
 when no API key is configured. API quotas, provider terms, and the right to use downloaded subtitle
 content remain the user's responsibility.
+
+## Generate subtitles when search finds nothing
+
+When translation is enabled but no source subtitle exists, PairCue can extract the first audio
+track into bounded FLAC chunks and call an OpenAI-compatible transcription endpoint. It requests
+segment timestamps, validates every returned cue, joins chunk timelines, and publishes the source
+SRT only after every chunk succeeds.
+
+```dotenv
+PAIRCUE_TRANSCRIPTION_ENABLED=true
+PAIRCUE_TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
+PAIRCUE_TRANSCRIPTION_API_KEY=your-api-key
+PAIRCUE_TRANSCRIPTION_MODEL=whisper-1
+```
+
+`whisper-1` is the safe default because the documented API supports `verbose_json` segment
+timestamps for that model. A compatible self-hosted endpoint can be used instead. Transcription is
+off by default: when enabled, extracted audio is sent to the configured endpoint, so review its
+privacy, retention, pricing, and model terms first.
 
 ## Language-learning pairs
 
@@ -222,13 +271,24 @@ pytest
 python scripts/check_runtime_licenses.py
 ```
 
-The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
+For configuration checks without displaying secrets:
+
+```bash
+paircue doctor
+paircue doctor --json
+```
+
+The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md). Release changes are
+listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Project status
 
-The beta intentionally targets one media server or filesystem root and one worker. Planned
-follow-ups include a translation cache, per-library language-learning profiles, richer status
-reporting, and faster incremental scans.
+The beta intentionally targets one media server or filesystem root and one worker. Its product
+wedge is complete private-library automation: ordinary subtitle managers focus on acquiring a
+single subtitle, while browser learning extensions focus on Netflix or YouTube. PairCue produces a
+portable, synchronized bilingual learning file for media you already own. Planned follow-ups
+include a translation cache, per-library language-learning profiles, richer status reporting, and
+faster incremental scans.
 
 PairCue is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
 subtitle providers, or translation model providers. PairCue application logic is independently

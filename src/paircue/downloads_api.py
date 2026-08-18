@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import Response
 
+from paircue import __version__
 from paircue.config import DownloadStationSettings
 from paircue.security import (
     require_bounded_content_length,
@@ -70,7 +71,7 @@ def create_downloads_app(
 ) -> FastAPI:
     app = FastAPI(
         title="PairCue Download Station",
-        version="0.1.0b4",
+        version=__version__,
         debug=False,
         docs_url=None,
         redoc_url=None,

@@ -14,3 +14,8 @@ suggested mitigation. Never include live media-server, NAS, or translation crede
 
 PairCue is designed for a trusted home network. Do not expose either service directly to the public
 internet. Use a VPN or an authenticated reverse proxy and keep the bearer tokens separate.
+
+When transcription is enabled, PairCue sends extracted audio chunks to the configured endpoint.
+When translation is enabled, it sends subtitle dialogue to the configured endpoint. These features
+are disabled or unconfigured by default; review the provider's access, retention, and privacy terms
+before enabling either one.

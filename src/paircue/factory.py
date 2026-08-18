@@ -15,6 +15,7 @@ from paircue.services.media_tools import EmbeddedSubtitleExtractor, SubtitleSync
 from paircue.services.pipeline import SubtitlePipeline
 from paircue.services.plex import PlexClient
 from paircue.services.state import StateStore
+from paircue.services.transcriber import OpenAICompatibleTranscriber, TranscriptionConfig
 from paircue.services.translator import (
     CompleteTranslator,
     OpenAICompatibleProvider,
@@ -84,12 +85,28 @@ def build_runtime(settings: PairCueSettings) -> CoreRuntime:
             target_language_style=settings.target_language_style,
         )
 
+    transcriber = None
+    if settings.transcription_enabled:
+        transcriber = OpenAICompatibleTranscriber(
+            TranscriptionConfig(
+                base_url=settings.transcription_base_url,
+                api_key=settings.transcription_api_key.get_secret_value(),
+                model=settings.transcription_model,
+                timeout_seconds=settings.transcription_timeout_seconds,
+                max_attempts=settings.transcription_max_attempts,
+                chunk_seconds=settings.transcription_chunk_seconds,
+                prompt=settings.transcription_prompt,
+            ),
+            temporary_root=settings.state_dir / "transcription",
+        )
+
     pipeline = SubtitlePipeline(
         media_root=settings.media_root,
         state=state,
         downloader=downloader,
         extractor=EmbeddedSubtitleExtractor(),
         synchronizer=synchronizer,
+        transcriber=transcriber,
         translator=translator,
         glossary=glossary,
         clean_source_output=settings.clean_source_output,

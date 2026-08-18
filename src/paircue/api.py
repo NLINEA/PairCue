@@ -10,6 +10,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from paircue import __version__
 from paircue.config import PairCueSettings
 from paircue.runtime import CoreRuntime
 from paircue.security import (
@@ -28,6 +29,20 @@ class HealthResponse(BaseModel):
 class QueuedResponse(BaseModel):
     queued: bool
     message: str
+
+
+class RecentResultResponse(BaseModel):
+    media_name: str
+    status: str
+    message: str
+    updated_at: str
+
+
+class StatusResponse(BaseModel):
+    pending: int
+    queued: int
+    results: dict[str, int]
+    recent: list[RecentResultResponse]
 
 
 class PlexMetadata(BaseModel):
@@ -63,7 +78,7 @@ def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
     docs_url = "/docs" if settings.api_docs_enabled else None
     app = FastAPI(
         title="PairCue API",
-        version="0.1.0b4",
+        version=__version__,
         debug=False,
         docs_url=docs_url,
         redoc_url=None,
@@ -84,6 +99,19 @@ def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
     async def scan() -> QueuedResponse:
         count = await run_in_threadpool(runtime.scan_now)
         return QueuedResponse(queued=count > 0, message=f"queued {count} item(s)")
+
+    @protected.get("/status", response_model=StatusResponse)
+    async def status() -> StatusResponse:
+        snapshot = await run_in_threadpool(runtime.status_snapshot)
+        return StatusResponse(
+            pending=snapshot.pending,
+            queued=snapshot.queued,
+            results=snapshot.results,
+            recent=[
+                RecentResultResponse.model_validate(row, from_attributes=True)
+                for row in snapshot.recent
+            ],
+        )
 
     @protected.post("/webhooks/plex", response_model=QueuedResponse)
     async def plex_webhook(request: Request) -> QueuedResponse:

@@ -35,5 +35,6 @@ REST API and requires the user's own API key. OpenSubtitles is a service, not bu
 Its API terms, account limits, and downloaded subtitle content remain subject to the provider's
 terms and applicable copyright law.
 
-Translation endpoints are also user-configured network services. PairCue does not bundle their
-models, SDKs, or weights.
+Translation and transcription endpoints are also user-configured network services. PairCue does
+not bundle their models, SDKs, or weights. Enabling transcription sends bounded audio extracts from
+the user's media to the configured service.

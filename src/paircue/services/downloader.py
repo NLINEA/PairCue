@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import io
 import logging
+import struct
 import threading
 import zipfile
 from pathlib import Path
@@ -22,15 +23,39 @@ log = logging.getLogger(__name__)
 
 OPEN_SUBTITLES_API = "https://api.opensubtitles.com/api/v1"
 MAX_SUBTITLE_BYTES = 5 * 1024 * 1024
+HASH_BLOCK_BYTES = 64 * 1024
+UINT64_MASK = (1 << 64) - 1
+
+
+def opensubtitles_movie_hash(path: Path) -> tuple[str, int] | None:
+    """Return the OSDB hash from file size plus first/last 64 KiB uint64 words."""
+    size = path.stat().st_size
+    if size < HASH_BLOCK_BYTES * 2:
+        return None
+    with path.open("rb") as media:
+        first = media.read(HASH_BLOCK_BYTES)
+        media.seek(-HASH_BLOCK_BYTES, 2)
+        last = media.read(HASH_BLOCK_BYTES)
+    if len(first) != HASH_BLOCK_BYTES or len(last) != HASH_BLOCK_BYTES:
+        return None
+    checksum = size
+    for (value,) in struct.iter_unpack("<Q", first + last):
+        checksum = (checksum + value) & UINT64_MASK
+    return f"{checksum:016x}", size
 
 
 class SubtitleDownloader(Protocol):
     def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]: ...
 
+    def close(self) -> None: ...
+
 
 class DisabledSubtitleDownloader:
     def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         return ()
+
+    def close(self) -> None:
+        return
 
 
 class OpenSubtitlesDownloader:
@@ -52,6 +77,7 @@ class OpenSubtitlesDownloader:
         self.api_key = api_key
         self.username = username
         self.password = password
+        self._owns_client = client is None
         self.client = client or httpx.Client(
             follow_redirects=False,
             timeout=httpx.Timeout(timeout_seconds),
@@ -59,6 +85,10 @@ class OpenSubtitlesDownloader:
         self._token = ""
         self._api_base = OPEN_SUBTITLES_API
         self._login_lock = threading.Lock()
+
+    def close(self) -> None:
+        if self._owns_client:
+            self.client.close()
 
     def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         outputs: list[Path] = []
@@ -92,6 +122,21 @@ class OpenSubtitlesDownloader:
         return tuple(outputs)
 
     def _search_file(self, item: MediaItem, language: str) -> int | None:
+        hash_result = opensubtitles_movie_hash(item.path)
+        if hash_result is not None:
+            movie_hash, movie_size = hash_result
+            file_id = self._search(
+                {
+                    "languages": language.casefold(),
+                    "moviebytesize": movie_size,
+                    "moviehash": movie_hash,
+                    "order_by": "download_count",
+                    "order_direction": "desc",
+                },
+                language,
+            )
+            if file_id is not None:
+                return file_id
         params: dict[str, str | int] = {
             "languages": language.casefold(),
             "order_by": "download_count",
@@ -106,6 +151,9 @@ class OpenSubtitlesDownloader:
                 params["season_number"] = item.season
             if item.episode is not None:
                 params["episode_number"] = item.episode
+        return self._search(params, language)
+
+    def _search(self, params: dict[str, str | int], language: str) -> int | None:
         response = self.client.get(
             f"{self._api_base}/subtitles",
             params=params,

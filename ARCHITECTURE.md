@@ -24,6 +24,7 @@ flowchart LR
     Lock --> Pipeline["Subtitle pipeline"]
     Pipeline --> Embedded["Embedded subtitle extractor"]
     Pipeline --> Provider["Official OpenSubtitles API adapter"]
+    Pipeline --> Transcribe["Timestamped transcription fallback"]
     Pipeline --> Sync["PairCue audio alignment"]
     Pipeline --> Merge["Confidence-scored time merger"]
     Pipeline --> Translate["Validated translator + fallback"]
@@ -49,7 +50,9 @@ Station credentials. They use different bearer tokens and ports.
 5. Require the configured timing-coverage threshold in both tracks before publishing the merged
    bilingual file. This handles one-to-many cue segmentation without silently accepting unrelated
    subtitle releases.
-6. Otherwise, download the configured source subtitle when required and synchronize it.
+6. Otherwise, download the configured source subtitle when required and synchronize it. If search
+   fails and transcription is enabled, segment the media audio, request timestamped speech
+   transcription, and atomically publish a generated source SRT only after every chunk succeeds.
 7. Remove non-dialogue cues from the in-memory translation source.
 8. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
    once with non-empty text. Use the fallback provider only after the primary exhausts its retries.

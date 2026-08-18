@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 
 from paircue.models import MediaItem
-from paircue.services.downloader import OpenSubtitlesDownloader
+from paircue.services.downloader import OpenSubtitlesDownloader, opensubtitles_movie_hash
 
 SUBTITLE = b"1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
 
@@ -56,6 +56,87 @@ def test_official_api_searches_and_downloads_the_requested_language(tmp_path: Pa
 
     assert outputs == (tmp_path / "Movie.ja.srt",)
     assert outputs[0].read_bytes() == SUBTITLE
+
+
+def test_movie_hash_uses_file_edges_and_size(tmp_path: Path) -> None:
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"\x01" * 65_536 + b"\x02" * 65_536)
+
+    assert opensubtitles_movie_hash(media) == ("6060606060626000", 131_072)
+
+
+def test_hash_match_is_preferred_over_title_search(tmp_path: Path) -> None:
+    item = _movie(tmp_path)
+    item.path.write_bytes(b"\x01" * 65_536 + b"\x02" * 65_536)
+    search_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal search_calls
+        if request.url.path == "/api/v1/subtitles":
+            search_calls += 1
+            assert request.url.params["moviehash"] == "6060606060626000"
+            assert request.url.params["moviebytesize"] == "131072"
+            assert "query" not in request.url.params
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {"attributes": {"language": "en", "files": [{"file_id": 88}]}}
+                    ]
+                },
+            )
+        if request.url.path == "/api/v1/download":
+            return httpx.Response(
+                200,
+                json={"link": "https://dl.opensubtitles.com/subtitles/88.srt"},
+            )
+        if request.url.host == "dl.opensubtitles.com":
+            return httpx.Response(200, content=SUBTITLE)
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    downloader = OpenSubtitlesDownloader(
+        api_key="api-key",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    assert downloader.download(item, {"en"}) == (tmp_path / "Movie.en.srt",)
+    assert search_calls == 1
+
+
+def test_title_search_is_fallback_when_hash_has_no_match(tmp_path: Path) -> None:
+    item = _movie(tmp_path)
+    item.path.write_bytes(b"\x01" * 65_536 + b"\x02" * 65_536)
+    search_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal search_calls
+        if request.url.path == "/api/v1/subtitles":
+            search_calls += 1
+            if "moviehash" in request.url.params:
+                return httpx.Response(200, json={"data": []})
+            assert request.url.params["query"] == "Movie"
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {"attributes": {"language": "en", "files": [{"file_id": 89}]}}
+                    ]
+                },
+            )
+        if request.url.path == "/api/v1/download":
+            return httpx.Response(
+                200,
+                json={"link": "https://dl.opensubtitles.com/subtitles/89.srt"},
+            )
+        return httpx.Response(200, content=SUBTITLE)
+
+    downloader = OpenSubtitlesDownloader(
+        api_key="api-key",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    assert downloader.download(item, {"en"}) == (tmp_path / "Movie.en.srt",)
+    assert search_calls == 2
 
 
 def test_account_login_token_and_returned_api_host_are_used(tmp_path: Path) -> None:

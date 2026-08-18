@@ -3,12 +3,22 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+from dataclasses import dataclass
 
 from paircue.models import MediaItem
 from paircue.services.media_source import MediaSource
 from paircue.services.pipeline import SubtitlePipeline
+from paircue.services.state import RecentMediaState
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeSnapshot:
+    pending: int
+    queued: int
+    results: dict[str, int]
+    recent: tuple[RecentMediaState, ...]
 
 
 class JobCoordinator:
@@ -42,6 +52,11 @@ class JobCoordinator:
         self._queue.put(None)
         if self._worker is not None:
             self._worker.join(timeout=10)
+
+    def counts(self) -> tuple[int, int]:
+        with self._guard:
+            pending = len(self._pending)
+        return pending, self._queue.qsize()
 
     def _run(self) -> None:
         while True:
@@ -83,7 +98,17 @@ class CoreRuntime:
         if self._poller is not None:
             self._poller.join(timeout=10)
         self.coordinator.stop()
+        self.coordinator.pipeline.close()
         self.media_source.close()
+
+    def status_snapshot(self, recent_limit: int = 20) -> RuntimeSnapshot:
+        pending, queued = self.coordinator.counts()
+        return RuntimeSnapshot(
+            pending=pending,
+            queued=queued,
+            results=self.coordinator.pipeline.state.summary(),
+            recent=self.coordinator.pipeline.state.recent(recent_limit),
+        )
 
     def scan_now(self) -> int:
         submitted = 0

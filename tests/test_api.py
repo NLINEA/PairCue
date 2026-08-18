@@ -2,6 +2,8 @@ from fastapi.testclient import TestClient
 
 from paircue.api import create_core_app
 from paircue.config import PairCueSettings
+from paircue.runtime import RuntimeSnapshot
+from paircue.services.state import RecentMediaState
 
 TOKEN = "a" * 32
 
@@ -27,6 +29,21 @@ class DummyRuntime:
     def submit_item_id(self, item_id: str) -> bool:
         self.rating_keys.append(item_id)
         return True
+
+    def status_snapshot(self) -> RuntimeSnapshot:
+        return RuntimeSnapshot(
+            pending=2,
+            queued=1,
+            results={"completed": 7, "failed": 1},
+            recent=(
+                RecentMediaState(
+                    media_name="Movie.mkv",
+                    status="completed",
+                    message="generated and translated",
+                    updated_at="2026-08-18T09:00:00+00:00",
+                ),
+            ),
+        )
 
 
 def _client(runtime: DummyRuntime) -> TestClient:
@@ -59,6 +76,21 @@ def test_health_is_public_but_scan_is_protected() -> None:
         assert client.post("/v1/scan").status_code == 401
         response = client.post("/v1/scan", headers={"Authorization": f"Bearer {TOKEN}"})
         assert response.json() == {"queued": True, "message": "queued 3 item(s)"}
+
+
+def test_status_is_protected_and_hides_full_media_path() -> None:
+    runtime = DummyRuntime()
+    with _client(runtime) as client:
+        assert client.get("/v1/status").status_code == 401
+        response = client.get(
+            "/v1/status",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["results"] == {"completed": 7, "failed": 1}
+    assert response.json()["recent"][0]["media_name"] == "Movie.mkv"
+    assert "/media/" not in response.text
 
 
 def test_webhook_validates_payload_and_queues_rating_key() -> None:

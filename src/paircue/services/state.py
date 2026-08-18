@@ -1,8 +1,17 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+
+
+@dataclass(frozen=True, slots=True)
+class RecentMediaState:
+    media_name: str
+    status: str
+    message: str
+    updated_at: str
 
 
 class StateStore:
@@ -53,6 +62,35 @@ class StateStore:
                 "SELECT status FROM media_state WHERE media_path = ?", (str(media_path),)
             ).fetchone()
         return str(row[0]) if row else None
+
+    def summary(self) -> dict[str, int]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT status, COUNT(*) FROM media_state GROUP BY status ORDER BY status"
+            ).fetchall()
+        return {str(status): int(count) for status, count in rows}
+
+    def recent(self, limit: int = 20) -> tuple[RecentMediaState, ...]:
+        bounded_limit = max(1, min(limit, 100))
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT media_path, status, message, updated_at
+                FROM media_state
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """,
+                (bounded_limit,),
+            ).fetchall()
+        return tuple(
+            RecentMediaState(
+                media_name=Path(str(media_path)).name,
+                status=str(status),
+                message=str(message).replace(str(media_path), Path(str(media_path)).name),
+                updated_at=str(updated_at),
+            )
+            for media_path, status, message, updated_at in rows
+        )
 
 
 def media_fingerprint(path: Path) -> str:

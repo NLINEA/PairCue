@@ -52,6 +52,14 @@ class PairCueSettings(BaseSettings):
     sync_enabled: bool = True
     sync_max_offset_seconds: int = Field(default=120, ge=1, le=600)
     sync_min_confidence: float = Field(default=0.24, ge=0.1, le=0.95)
+    transcription_enabled: bool = False
+    transcription_base_url: str = "https://api.openai.com/v1"
+    transcription_api_key: SecretStr = SecretStr("")
+    transcription_model: str = Field(default="whisper-1", min_length=1, max_length=100)
+    transcription_timeout_seconds: float = Field(default=300, ge=10, le=900)
+    transcription_max_attempts: int = Field(default=3, ge=1, le=6)
+    transcription_chunk_seconds: int = Field(default=300, ge=60, le=600)
+    transcription_prompt: str = Field(default="", max_length=1_000)
     clean_source_output: bool = True
 
     source_language: str = "en"
@@ -88,7 +96,13 @@ class PairCueSettings(BaseSettings):
     trusted_hosts: str = "localhost,127.0.0.1"
     max_webhook_bytes: int = Field(default=131072, ge=1024, le=1048576)
 
-    @field_validator("server_url", "plex_url", "translation_base_url", "fallback_base_url")
+    @field_validator(
+        "server_url",
+        "plex_url",
+        "translation_base_url",
+        "fallback_base_url",
+        "transcription_base_url",
+    )
     @classmethod
     def validate_service_urls(cls, value: str) -> str:
         if not value:
@@ -105,7 +119,12 @@ class PairCueSettings(BaseSettings):
     def validate_language(cls, value: str) -> str:
         return canonicalize_language_tag(value)
 
-    @field_validator("source_language_name", "target_language_name", "target_language_style")
+    @field_validator(
+        "source_language_name",
+        "target_language_name",
+        "target_language_style",
+        "transcription_prompt",
+    )
     @classmethod
     def validate_translation_prompt_setting(cls, value: str, info: ValidationInfo) -> str:
         value = value.strip()
@@ -123,6 +142,14 @@ class PairCueSettings(BaseSettings):
             raise ValueError("PAIRCUE_API_TOKEN must contain at least 32 characters")
         if self.translation_enabled and not _secret_value(self.translation_api_key):
             raise ValueError("translation is enabled but PAIRCUE_TRANSLATION_API_KEY is empty")
+        if (
+            self.transcription_enabled
+            and urlparse(self.transcription_base_url).hostname == "api.openai.com"
+            and not _secret_value(self.transcription_api_key)
+        ):
+            raise ValueError(
+                "transcription uses api.openai.com but PAIRCUE_TRANSCRIPTION_API_KEY is empty"
+            )
         opensubtitles_password = _secret_value(self.opensubtitles_password)
         opensubtitles_key = _secret_value(self.opensubtitles_api_key)
         if bool(self.opensubtitles_username) != bool(opensubtitles_password):

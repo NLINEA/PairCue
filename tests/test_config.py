@@ -18,6 +18,18 @@ def test_translation_requires_a_key() -> None:
         PairCueSettings(translation_enabled=True, translation_api_key="")
 
 
+def test_openai_transcription_requires_a_key_but_local_endpoint_does_not() -> None:
+    with pytest.raises(ValidationError, match="TRANSCRIPTION_API_KEY"):
+        PairCueSettings(transcription_enabled=True)
+
+    settings = PairCueSettings(
+        transcription_enabled=True,
+        transcription_base_url="http://whisper:9000/v1",
+    )
+
+    assert settings.transcription_model == "whisper-1"
+
+
 def test_opensubtitles_credentials_require_api_key_and_complete_pair() -> None:
     with pytest.raises(ValidationError, match="configured together"):
         PairCueSettings(opensubtitles_username="user")

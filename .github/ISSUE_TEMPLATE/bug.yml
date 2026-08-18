@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible PairCue problem without sharing private media or credentials.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve PairCue. Redact tokens, private paths, and media details.
+  - type: input
+    id: version
+    attributes:
+      label: PairCue version
+      placeholder: 0.1.0b5
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Media platform
+      options:
+        - Plex
+        - Jellyfin
+        - Emby
+        - Filesystem
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Redacted paircue doctor output
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed API keys, tokens, private paths, copyrighted subtitles, and media.
+          required: true

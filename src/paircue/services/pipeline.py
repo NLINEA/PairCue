@@ -29,6 +29,7 @@ from paircue.services.subtitle_files import (
     translated_subtitles,
     write_srt,
 )
+from paircue.services.transcriber import Transcriber
 from paircue.services.translator import CompleteTranslator
 
 log = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class SubtitlePipeline:
         synchronizer: SubtitleSynchronizer | None,
         translator: CompleteTranslator | None,
         glossary: GlossaryStore,
+        transcriber: Transcriber | None = None,
         clean_source_output: bool = True,
         source_language: str = "en",
         target_language: str = "zh-TW",
@@ -60,6 +62,7 @@ class SubtitlePipeline:
         self.downloader = downloader
         self.extractor = extractor
         self.synchronizer = synchronizer
+        self.transcriber = transcriber
         self.translator = translator
         self.glossary = glossary
         self.clean_source_output = clean_source_output
@@ -71,6 +74,11 @@ class SubtitlePipeline:
         self.locks = KeyedLockPool()
         profile = opencc_profile(target_language)
         self._target_converter = OpenCC(profile) if profile is not None else None
+
+    def close(self) -> None:
+        self.downloader.close()
+        if self.transcriber is not None:
+            self.transcriber.close()
 
     def process(self, item: MediaItem) -> ProcessResult:
         try:
@@ -158,18 +166,27 @@ class SubtitlePipeline:
                 f"no {self.target_language} subtitle was found and translation is disabled"
             )
 
+        source_was_generated = False
         if source_path is None:
             self.downloader.download(item, {self.source_language})
             source_path = find_language_sidecar(media_path, self.source_language)
+        if source_path is None and self.transcriber is not None:
+            generated_path = sidecar_path(media_path, self.source_language)
+            self.transcriber.transcribe(media_path, generated_path, self.source_language)
+            source_path = find_language_sidecar(media_path, self.source_language)
+            source_was_generated = source_path is not None
         if source_path is None:
-            raise RuntimeError(f"no {self.source_language} subtitle is available for translation")
+            raise RuntimeError(
+                f"no {self.source_language} subtitle is available; configure download or "
+                "transcription before translation"
+            )
         if target is not None and not merge_attempted:
             try:
                 return self._merge_existing_pair(media_path, source_path, target)
             except ValueError as exc:
                 log.warning("existing subtitle pair could not be merged: %s", exc)
         synchronized = False
-        if self.synchronizer is not None:
+        if self.synchronizer is not None and not source_was_generated:
             synchronized = self.synchronizer.sync(media_path, source_path)
 
         source = clean_spoken_dialogue(parse_srt(source_path))
@@ -193,7 +210,10 @@ class SubtitlePipeline:
             write_srt(source_path, source)
         write_srt(translated_path, translated)
         write_srt(bilingual_path, bilingual_output)
-        action = "aligned and translated" if synchronized else "translated"
+        if source_was_generated:
+            action = "generated and translated"
+        else:
+            action = "aligned and translated" if synchronized else "translated"
         return ProcessResult(
             "completed",
             f"{action} {len(source)} cues from {self.source_language} to {self.target_language}",

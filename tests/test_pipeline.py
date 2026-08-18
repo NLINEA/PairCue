@@ -15,6 +15,9 @@ class NoopDownloader:
     def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         return ()
 
+    def close(self) -> None:
+        return
+
 
 class TargetDownloader(NoopDownloader):
     def __init__(self) -> None:
@@ -63,6 +66,22 @@ class RecordingSynchronizer:
         return True
 
 
+class GeneratingTranscriber:
+    def __init__(self) -> None:
+        self.calls: list[tuple[Path, str]] = []
+
+    def transcribe(self, media_path: Path, output_path: Path, language: str) -> Path:
+        self.calls.append((media_path, language))
+        output_path.write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nGenerated source\n\n",
+            encoding="utf-8",
+        )
+        return output_path
+
+    def close(self) -> None:
+        return
+
+
 def _pipeline(
     tmp_path: Path,
     translator: object,
@@ -72,6 +91,7 @@ def _pipeline(
     bilingual_order: str = "target-first",
     downloader: object | None = None,
     synchronizer: object | None = None,
+    transcriber: object | None = None,
 ) -> SubtitlePipeline:
     return SubtitlePipeline(
         media_root=tmp_path,
@@ -79,6 +99,7 @@ def _pipeline(
         downloader=downloader or NoopDownloader(),  # type: ignore[arg-type]
         extractor=NoopExtractor(),  # type: ignore[arg-type]
         synchronizer=synchronizer,  # type: ignore[arg-type]
+        transcriber=transcriber,  # type: ignore[arg-type]
         translator=translator,  # type: ignore[arg-type]
         glossary=GlossaryStore(tmp_path / "state" / "glossaries"),
         source_language=source_language,
@@ -180,6 +201,27 @@ def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: 
     assert (tmp_path / "Lesson.en.srt").exists()
     bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
     assert "こんにちは\n翻譯 0" in bilingual
+
+
+def test_pipeline_generates_missing_source_then_builds_bilingual_track(tmp_path: Path) -> None:
+    media = tmp_path / "New Movie.mkv"
+    media.write_bytes(b"fake media")
+    item = MediaItem("3", "movie", media, "New Movie")
+    transcriber = GeneratingTranscriber()
+    synchronizer = RecordingSynchronizer()
+
+    result = _pipeline(
+        tmp_path,
+        FullTranslator(),
+        transcriber=transcriber,
+        synchronizer=synchronizer,
+    ).process(item)
+
+    assert result.status == "completed"
+    assert result.message == "generated and translated 1 cues from en to zh-TW"
+    assert transcriber.calls == [(media, "en")]
+    assert synchronizer.paths == []
+    assert (tmp_path / "New Movie.zh-TW.cc.srt").exists()
 
 
 def test_pipeline_merges_two_existing_languages_without_ai(tmp_path: Path) -> None:

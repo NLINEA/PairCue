@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from paircue import __version__
 from paircue.models import MediaItem, MediaType
 from paircue.services.media_source import MediaSourceError, remap_server_path
 
@@ -35,7 +36,7 @@ class PlexClient:
                 "X-Plex-Token": token,
                 "X-Plex-Client-Identifier": "paircue",
                 "X-Plex-Product": "PairCue",
-                "X-Plex-Version": "0.1.0b4",
+                "X-Plex-Version": __version__,
                 "X-Plex-Pms-Api-Version": "1.0.0",
                 "Accept": "application/json",
             },

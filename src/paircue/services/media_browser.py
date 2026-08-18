@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 import httpx
 
+from paircue import __version__
 from paircue.models import MediaItem, MediaType
 from paircue.services.media_source import MediaSource, MediaSourceError, remap_server_path
 
@@ -45,7 +46,7 @@ class MediaBrowserClient(MediaSource):
         self.media_root = media_root
         authorization = (
             'MediaBrowser Client="PairCue", Device="Server", DeviceId="paircue", '
-            f'Version="0.1.0b4", Token="{token}"'
+            f'Version="{__version__}", Token="{token}"'
         )
         self._client = httpx.Client(
             base_url=f"{api_root}/",
