@@ -53,6 +53,13 @@ class Sidecars:
     bilingual: Path | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class BilingualMergeResult:
+    subtitles: list[srt.Subtitle]
+    source_match_ratio: float
+    target_match_ratio: float
+
+
 def classify_sidecar(media_path: Path, subtitle_path: Path) -> SubtitleLanguage | None:
     if subtitle_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
         return None
@@ -208,3 +215,124 @@ def bilingual_subtitles(
             )
         )
     return output
+
+
+def merge_bilingual_subtitles(
+    source: list[srt.Subtitle],
+    target: list[srt.Subtitle],
+    *,
+    order: str = "target-first",
+    tolerance_ms: int = 350,
+    min_match_ratio: float = 0.7,
+) -> BilingualMergeResult:
+    """Merge independently segmented language tracks using their synchronized timings."""
+
+    if order not in {"target-first", "source-first"}:
+        raise ValueError("bilingual order must be target-first or source-first")
+    if not source or not target:
+        raise ValueError("both subtitle tracks must contain cues")
+    source = sorted(source, key=lambda cue: (cue.start, cue.end))
+    target = sorted(target, key=lambda cue: (cue.start, cue.end))
+    total = len(source) + len(target)
+    parent = list(range(total))
+
+    def find(node: int) -> int:
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    tolerance_seconds = tolerance_ms / 1000
+    matched_source: set[int] = set()
+    matched_target: set[int] = set()
+    target_start = 0
+    for source_index, source_cue in enumerate(source):
+        while (
+            target_start < len(target)
+            and target[target_start].end.total_seconds()
+            < source_cue.start.total_seconds() - tolerance_seconds
+        ):
+            target_start += 1
+        target_index = target_start
+        while (
+            target_index < len(target)
+            and target[target_index].start.total_seconds()
+            <= source_cue.end.total_seconds() + tolerance_seconds
+        ):
+            if _timings_match(source_cue, target[target_index], tolerance_seconds):
+                union(source_index, len(source) + target_index)
+                matched_source.add(source_index)
+                matched_target.add(target_index)
+            target_index += 1
+
+    source_ratio = len(matched_source) / len(source)
+    target_ratio = len(matched_target) / len(target)
+    if min(source_ratio, target_ratio) < min_match_ratio:
+        raise ValueError(
+            "subtitle timing match is too low "
+            f"(source={source_ratio:.0%}, target={target_ratio:.0%})"
+        )
+
+    components: dict[int, tuple[list[srt.Subtitle], list[srt.Subtitle]]] = {}
+    for index, cue in enumerate(source):
+        source_cues, _ = components.setdefault(find(index), ([], []))
+        source_cues.append(cue)
+    for index, cue in enumerate(target):
+        _, target_cues = components.setdefault(find(len(source) + index), ([], []))
+        target_cues.append(cue)
+
+    groups = sorted(
+        components.values(),
+        key=lambda pair: min(cue.start for cues in pair for cue in cues),
+    )
+    output: list[srt.Subtitle] = []
+    for index, (source_cues, target_cues) in enumerate(groups, start=1):
+        all_cues = [*source_cues, *target_cues]
+        source_text = _join_unique_cues(source_cues)
+        target_text = _join_unique_cues(target_cues)
+        text_blocks = (
+            (target_text, source_text) if order == "target-first" else (source_text, target_text)
+        )
+        output.append(
+            srt.Subtitle(
+                index=index,
+                start=min(cue.start for cue in all_cues),
+                end=max(cue.end for cue in all_cues),
+                content="\n".join(text for text in text_blocks if text),
+            )
+        )
+    return BilingualMergeResult(output, source_ratio, target_ratio)
+
+
+def _timings_match(
+    source: srt.Subtitle,
+    target: srt.Subtitle,
+    tolerance_seconds: float,
+) -> bool:
+    start = max(source.start, target.start).total_seconds()
+    end = min(source.end, target.end).total_seconds()
+    overlap = end - start
+    source_duration = max((source.end - source.start).total_seconds(), 0.001)
+    target_duration = max((target.end - target.start).total_seconds(), 0.001)
+    if overlap > 0:
+        return bool(overlap / min(source_duration, target_duration) >= 0.25)
+    start_delta = abs((source.start - target.start).total_seconds())
+    end_delta = abs((source.end - target.end).total_seconds())
+    return bool(start_delta <= tolerance_seconds and end_delta <= tolerance_seconds)
+
+
+def _join_unique_cues(cues: list[srt.Subtitle]) -> str:
+    lines: list[str] = []
+    seen: set[str] = set()
+    for cue in cues:
+        text = cue.content.strip()
+        if text and text not in seen:
+            lines.append(text)
+            seen.add(text)
+    return "\n".join(lines)

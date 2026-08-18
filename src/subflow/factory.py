@@ -72,6 +72,8 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
         source_language=settings.source_language,
         target_language=settings.target_language,
         bilingual_order=settings.bilingual_order,
+        bilingual_merge_tolerance_ms=settings.bilingual_merge_tolerance_ms,
+        bilingual_merge_min_match_ratio=settings.bilingual_merge_min_match_ratio,
     )
     plex = PlexClient(
         base_url=settings.plex_url,

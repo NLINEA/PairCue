@@ -50,6 +50,8 @@ class SubFlowSettings(BaseSettings):
         max_length=200,
     )
     bilingual_order: Literal["target-first", "source-first"] = "target-first"
+    bilingual_merge_tolerance_ms: int = Field(default=350, ge=0, le=2000)
+    bilingual_merge_min_match_ratio: float = Field(default=0.7, ge=0.5, le=1)
 
     translation_enabled: bool = False
     translation_base_url: str = "https://api.z.ai/api/coding/paas/v4"

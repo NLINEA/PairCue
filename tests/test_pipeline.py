@@ -46,6 +46,13 @@ class PartialTranslator(FullTranslator):
         return {}
 
 
+class FailingTranslator(FullTranslator):
+    def translate_all(
+        self, subtitles: list[object], *, context: str, glossary: dict[str, str]
+    ) -> dict[int, str]:
+        raise AssertionError("existing subtitle tracks should be merged without AI")
+
+
 class RecordingSynchronizer:
     def __init__(self) -> None:
         self.paths: list[Path] = []
@@ -172,3 +179,26 @@ def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: 
     assert (tmp_path / "Lesson.en.srt").exists()
     bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
     assert "こんにちは\n翻譯 0" in bilingual
+
+
+def test_pipeline_merges_two_existing_languages_without_ai(tmp_path: Path) -> None:
+    item = _media_with_source(tmp_path, "ja", "こんにちは")
+    (tmp_path / "Lesson.en.srt").write_text(
+        "1\n00:00:00,050 --> 00:00:01,050\nHello\n\n",
+        encoding="utf-8",
+    )
+    synchronizer = RecordingSynchronizer()
+
+    result = _pipeline(
+        tmp_path,
+        FailingTranslator(),
+        source_language="ja",
+        target_language="en",
+        synchronizer=synchronizer,
+    ).process(item)
+
+    assert result.status == "completed"
+    assert result.message == "merged existing subtitle tracks (100%/100% matched)"
+    assert synchronizer.paths == [tmp_path / "Lesson.ja.srt", tmp_path / "Lesson.en.srt"]
+    bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
+    assert "Hello\nこんにちは" in bilingual

@@ -79,6 +79,23 @@ back to safe OpenCC script conversion.
 | Learn Japanese with an English base | `en` | `ja` | Japanese + English |
 | Watch with Hong Kong Traditional Chinese | `en` | `zh-HK` | zh-HK + English |
 
+## Merge two existing subtitle languages
+
+When both configured sidecars already exist, for example `Movie.ja.srt` and `Movie.en.srt`, SubFlow
+synchronizes both tracks and creates `Movie.en.cc.srt` without calling the translation provider.
+It matches cues by time rather than subtitle number, so one Japanese cue can safely pair with two
+shorter English cues, or the reverse.
+
+The merger requires at least 70% timing coverage in both tracks by default. It will not publish a
+misaligned bilingual file when confidence is lower. If AI translation is enabled, SubFlow falls
+back to translating the synchronized source track; otherwise it keeps the valid single-language
+file. Advanced thresholds can be adjusted in `subflow.env`:
+
+```dotenv
+SUBFLOW_BILINGUAL_MERGE_TOLERANCE_MS=350
+SUBFLOW_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
+```
+
 ## Automatic synchronization
 
 With `SUBFLOW_SYNC_ENABLED=true` (the default), SubFlow runs ffsubsync against the media before
@@ -110,6 +127,7 @@ magnet or upload a small `.torrent` file.
 - Plex paths must resolve below `SUBFLOW_MEDIA_ROOT`.
 - Subprocesses use argument arrays and never invoke a shell.
 - Subtitle and state writes are atomic; job execution is deduplicated and locked per media path.
+- Existing language tracks require confidence-scored timing coverage before bilingual publication.
 - The Docker services drop Linux capabilities and run without root privileges.
 
 See [SECURITY.md](SECURITY.md) for private vulnerability reporting guidance.

@@ -1,6 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
 import srt
 
 from subflow.services.subtitle_files import (
@@ -9,6 +10,7 @@ from subflow.services.subtitle_files import (
     clean_spoken_dialogue,
     discover_sidecars,
     find_language_sidecar,
+    merge_bilingual_subtitles,
     translated_subtitles,
 )
 
@@ -67,3 +69,28 @@ def test_custom_language_sidecar_matches_common_three_letter_tag(tmp_path: Path)
     japanese.write_text("x", encoding="utf-8")
 
     assert find_language_sidecar(media, "ja") == japanese
+
+
+def test_time_based_merge_handles_one_to_many_segmentation() -> None:
+    source = [srt.Subtitle(1, timedelta(0), timedelta(seconds=2), "Hello world")]
+    target = [
+        srt.Subtitle(1, timedelta(0), timedelta(seconds=1), "你好"),
+        srt.Subtitle(2, timedelta(seconds=1), timedelta(seconds=2), "世界"),
+    ]
+
+    merged = merge_bilingual_subtitles(source, target)
+
+    assert merged.source_match_ratio == 1
+    assert merged.target_match_ratio == 1
+    assert len(merged.subtitles) == 1
+    assert merged.subtitles[0].content == "你好\n世界\nHello world"
+    assert merged.subtitles[0].start == timedelta(0)
+    assert merged.subtitles[0].end == timedelta(seconds=2)
+
+
+def test_time_based_merge_rejects_unrelated_timelines() -> None:
+    source = [srt.Subtitle(1, timedelta(0), timedelta(seconds=1), "Hello")]
+    target = [srt.Subtitle(1, timedelta(seconds=10), timedelta(seconds=11), "你好")]
+
+    with pytest.raises(ValueError, match="timing match is too low"):
+        merge_bilingual_subtitles(source, target)

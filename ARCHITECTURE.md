@@ -20,6 +20,7 @@ flowchart LR
     Pipeline --> Embedded["Embedded subtitle extractor"]
     Pipeline --> Provider["Subliminal provider adapter"]
     Pipeline --> Sync["ffsubsync adapter"]
+    Pipeline --> Merge["Confidence-scored time merger"]
     Pipeline --> Translate["Validated translator + fallback"]
     Pipeline --> Output["Atomic source / target / bilingual files"]
     Pipeline --> State["SQLite state"]
@@ -37,14 +38,19 @@ They use different bearer tokens and ports.
 1. Resolve the Plex path under the configured media root; reject paths outside it.
 2. Deduplicate the queue and take a lock for the media path.
 3. Extract text-based embedded subtitles matching the configured source or target language.
-4. Download the configured source subtitle when required and synchronize it against the media.
-5. Remove non-dialogue cues from the in-memory translation source.
-6. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
+4. When both language tracks exist, synchronize each against the media and merge by temporal
+   connected components. Never assume cue numbers or counts match.
+5. Require the configured timing-coverage threshold in both tracks before publishing the merged
+   bilingual file. This handles one-to-many cue segmentation without silently accepting unrelated
+   subtitle releases.
+6. Otherwise, download the configured source subtitle when required and synchronize it.
+7. Remove non-dialogue cues from the in-memory translation source.
+8. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
    once with non-empty text. Use the fallback provider only after the primary exhausts its retries.
-7. Validate complete coverage across the whole file.
-8. Write the target-language output and then the bilingual learning output using atomic
+9. Validate complete coverage across the whole file.
+10. Write the target-language output and then the bilingual learning output using atomic
    replacements. The bilingual file is the completion marker.
-9. Record the result in SQLite.
+11. Record the result in SQLite.
 
 ## Trade-offs
 
