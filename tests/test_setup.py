@@ -74,4 +74,10 @@ def test_visual_setup_asks_for_platform_before_starting_mode() -> None:
     assert html.index('aria-label="Media platform"') < html.index(
         'aria-label="Starting point"'
     )
-    assert html.index("Where do you watch?") < html.index("How do you want to begin?")
+    assert html.index("Where will you watch?") < html.index(
+        "What should PairCue do first?"
+    )
+    assert 'id="journey-stage" hidden' in html
+    assert 'id="details-stage" hidden' in html
+    assert html.index('id="continue-platform"') < html.index('id="continue-journey"')
+    assert "Kodi, Infuse, VLC, NAS" in html

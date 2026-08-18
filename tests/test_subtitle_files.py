@@ -11,6 +11,7 @@ from paircue.services.subtitle_files import (
     discover_sidecars,
     find_language_sidecar,
     merge_bilingual_subtitles,
+    sidecar_path,
     translated_subtitles,
 )
 
@@ -69,6 +70,19 @@ def test_custom_language_sidecar_matches_common_three_letter_tag(tmp_path: Path)
     japanese.write_text("x", encoding="utf-8")
 
     assert find_language_sidecar(media, "ja") == japanese
+
+
+def test_bilingual_sidecar_uses_standard_multiple_languages_tag(tmp_path: Path) -> None:
+    media = tmp_path / "Movie.mkv"
+    media.write_bytes(b"video")
+    bilingual = tmp_path / "Movie.mul.srt"
+    bilingual.write_text("x", encoding="utf-8")
+    misleading_cc = tmp_path / "Movie.en.cc.srt"
+    misleading_cc.write_text("x", encoding="utf-8")
+
+    assert sidecar_path(media, "en", bilingual=True) == bilingual
+    assert find_language_sidecar(media, "en", bilingual=True) == bilingual
+    assert find_language_sidecar(media, "en") is None
 
 
 def test_time_based_merge_handles_one_to_many_segmentation() -> None:

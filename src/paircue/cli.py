@@ -442,7 +442,7 @@ def _learn(args: argparse.Namespace) -> int:
     ):
         _reveal_path(result.outputs[-1])
     guided = isinstance(getattr(args, "setup_state", None), SetupState)
-    has_bilingual = any(path.name.casefold().endswith(".cc.srt") for path in result.outputs)
+    has_bilingual = any(path.name.casefold().endswith(".mul.srt") for path in result.outputs)
     if result.status == "failed":
         _update_guided_progress(args, "failed", result.message)
         return 1
@@ -770,7 +770,7 @@ def _quick_pair_subtitles(order: str) -> QuickPairResult | None:
             parse_srt(target),
             order=cast(Literal["target-first", "source-first"], order),
         )
-        output, reservation_inode = _reserve_quick_pair_output(target)
+        output, reservation_inode = _reserve_quick_pair_output(source, target)
         try:
             write_srt(output, merged.subtitles)
         except Exception:
@@ -803,11 +803,27 @@ def _checked_quick_pair_input(path: Path) -> Path:
     return resolved
 
 
-def _reserve_quick_pair_output(target: Path) -> tuple[Path, int]:
-    stem = target.stem
-    if stem.casefold().endswith(".cc"):
-        stem = stem[:-3]
-    names = (f"{stem}.cc.srt", *(f"{stem}.cc-{index}.srt" for index in range(2, 1000)))
+def _reserve_quick_pair_output(source: Path, target: Path) -> tuple[Path, int]:
+    """Reserve a non-destructive, media-server-safe bilingual filename."""
+
+    source_parts = source.stem.split(".")
+    target_parts = target.stem.split(".")
+    common_parts: list[str] = []
+    for source_part, target_part in zip(source_parts, target_parts, strict=False):
+        if source_part.casefold() != target_part.casefold():
+            break
+        common_parts.append(target_part)
+    stem = ".".join(common_parts).strip(".")
+    if not stem:
+        stem = target.stem
+        for suffix in (".mul", ".cc"):
+            if stem.casefold().endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
+    names = (
+        f"{stem}.mul.srt",
+        *(f"{stem}.paircue-{index}.mul.srt" for index in range(2, 1000)),
+    )
     for name in names:
         candidate = target.with_name(name)
         if candidate == target:

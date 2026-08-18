@@ -66,7 +66,9 @@ shuts the runtime down cleanly before the next action.
 
 Desktop Quick Pair is a separate zero-configuration path inside the same tokenized setup origin.
 The operating system chooses both SRT inputs, the existing independent timing matcher writes a new
-non-overwriting bilingual file, and only its filename and match ratios return to the browser.
+non-overwriting bilingual file, and only its filename and match ratios return to the browser. New
+bilingual sidecars use the standard ISO 639-2 `mul` language tag; `cc` is not used because supported
+media servers reserve it for hearing-impaired captions.
 
 ## Processing contract
 

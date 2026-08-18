@@ -109,6 +109,7 @@ def main() -> int:
     if payload.is_dir():
         required_assets = (
             "paircue/setup/index.html",
+            "paircue/setup/favicon.svg",
             "paircue/dashboard/index.html",
         )
         packaged_paths = {path.as_posix() for path in payload.rglob("*") if path.is_file()}

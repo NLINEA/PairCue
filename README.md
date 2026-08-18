@@ -36,9 +36,9 @@ PairCue from this repository's Releases page.
 
 ## Your first run
 
-PairCue opens a private setup page in your browser. The first question is deliberately the place
-where you watch: **Plex, Jellyfin, Emby, or a media folder**. After choosing the platform, choose
-**Try one video** or **Automate my library**.
+PairCue opens a private three-step setup page in your browser. The first screen asks only where you
+watch: **Plex, Jellyfin, Emby, or another player such as Kodi, Infuse, or VLC**. Continue to choose
+the fastest first result, then PairCue reveals only the settings that result needs.
 
 For the easiest first run, choose **Try one video**. Pick the two languages and tell PairCue whether
 you already have zero, one, or two subtitle tracks. Search and translation fields appear only when
@@ -46,10 +46,11 @@ they are relevant. Press **Save and choose a video**, then select one movie or e
 file window. Progress and the final result stay visible on the setup page; a successful bilingual
 subtitle is revealed in Finder or your file manager.
 
-If you already have two SRT files, the desktop setup shows **Pair two SRTs now** immediately after
-the platform and starting choice. Choose the spoken subtitle first and the learning subtitle
-second. PairCue creates and reveals a new `.cc.srt` without saving setup, using an account, or
-uploading either file, then finishes the app run cleanly.
+If you already have two SRT files, choose **Choose two SRTs** on the second screen. Choose the
+spoken subtitle first and the learning subtitle second. PairCue creates and reveals a new
+`.mul.srt` without saving setup, using an account, or uploading either file, then finishes the app
+run cleanly. PairCue keeps the common base name when the two inputs already follow media-server
+naming. Otherwise, rename the result to match the video while keeping the `.mul.srt` ending.
 
 The setup is stored only on this device and an older configuration is backed up before replacement.
 PairCue has no analytics, PairCue account, remote setup assets, or saved browser form data. Desktop
@@ -61,12 +62,12 @@ generation need a separate FFmpeg installation.
 
 ### Already have two subtitle files?
 
-In the desktop app, press **Pair two SRTs now** and choose the two files. PairCue never overwrites
+In the desktop app, press **Choose two SRTs** and choose the two files. PairCue never overwrites
 the inputs or a previous paired result. Developers and command-line users can do the same without
 a media server, API key, or database:
 
 ```bash
-paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt
+paircue pair Movie.ja.srt Movie.en.srt -o Movie.mul.srt
 ```
 
 PairCue matches by time, including one-to-many cue differences, and refuses low-confidence pairs.
@@ -81,10 +82,20 @@ the video. When no filename is supplied, PairCue opens the system file chooser. 
 
 - `Movie.<source>.srt` — synchronized source subtitle when one is downloaded or extracted.
 - `Movie.<target>.srt` — translated learning language.
-- `Movie.<target>.cc.srt` — both languages on the same cue timing.
+- `Movie.mul.srt` — both languages on the same cue timing.
 
 With the default `zh-TW` setting, the last two files are `Movie.zh-TW.srt` and
-`Movie.zh-TW.cc.srt`.
+`Movie.mul.srt`.
+
+`mul` is the ISO 639-2 code for multiple languages, so Plex and other media players can identify
+the file accurately. PairCue deliberately does not label bilingual output `cc`: both
+[Plex](https://support.plex.tv/articles/200471133-adding-local-subtitles-to-your-media/) and
+[Jellyfin](https://jellyfin.org/docs/general/server/media/shows/#external-subtitles-and-audio-tracks)
+reserve that flag for hearing-impaired captions.
+
+If you tried beta 9, rename any PairCue-generated `Movie.<target>.cc.srt` to `Movie.mul.srt`
+(without overwriting an existing file), then refresh that item in your media server. PairCue does
+not rename existing files automatically.
 
 Translation is all-or-nothing: PairCue does not publish bilingual output when even one cue is
 missing. By default, the source sidecar is also rewritten atomically with non-dialogue cues removed;
@@ -139,7 +150,7 @@ It reports filenames rather than full media-library paths.
 | Plex | Authenticated library API | Polling or native webhook |
 | Jellyfin | Authenticated user-items API | Polling or Webhook Plugin `ItemAdded` event |
 | Emby | Authenticated user-items API | Polling or `ItemAdded` webhook |
-| Any NAS or local media folder | Recursive video-file scan | Polling |
+| Kodi, Infuse, VLC, any NAS or media folder | Recursive video-file scan | Polling |
 
 Kodi, Infuse, VLC, and other players can read the resulting standard SRT sidecars when they access
 the same media files. They do not need a separate PairCue integration.
@@ -270,7 +281,7 @@ to safe OpenCC script conversion.
 ## Merge two existing subtitle languages
 
 When both configured sidecars already exist, for example `Movie.ja.srt` and `Movie.en.srt`, PairCue
-synchronizes both tracks and creates `Movie.en.cc.srt` without calling the translation provider.
+synchronizes both tracks and creates `Movie.mul.srt` without calling the translation provider.
 It matches cues by time rather than subtitle number, so one Japanese cue can safely pair with two
 shorter English cues, or the reverse.
 

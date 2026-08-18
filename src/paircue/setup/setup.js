@@ -8,6 +8,13 @@ const actionStatus = byId("action-status");
 const apiToken = randomToken();
 let desktopApp = false;
 
+const platformNames = {
+  plex: "Plex",
+  jellyfin: "Jellyfin",
+  emby: "Emby",
+  filesystem: "Other players",
+};
+
 const secretIds = new Set([
   "server-token",
   "opensubtitles-key",
@@ -21,6 +28,10 @@ function selectedPlatform() {
 
 function selectedMode() {
   return form.querySelector('input[name="mode"]:checked').value;
+}
+
+function selectedPlatformName() {
+  return platformNames[selectedPlatform()];
 }
 
 function value(id) {
@@ -134,12 +145,73 @@ function updateMode() {
   const library = selectedMode() === "library";
   byId("library-options").hidden = !library;
   byId("single-note").hidden = library;
-  byId("quick-pair-card").hidden = library || !desktopApp;
+  byId("quick-pair-card").hidden = !desktopApp;
+  byId("continue-journey").textContent = library
+    ? "Set up library automation"
+    : "Set up one video";
+  byId("details-summary").textContent =
+    `${selectedPlatformName()} · ${library ? "Library automation" : "One video"}`;
+  byId("language-step-number").textContent = library ? "4" : "3";
+  byId("automation-step-number").textContent = library ? "5" : "4";
   byId("download-config").textContent = library
     ? (desktopApp ? "Save and open dashboard" : "Save paircue.env")
     : "Save and choose a video";
   updatePlatform();
   updateNextStep();
+}
+
+function setProgress(stage) {
+  const stages = ["platform", "start", "details"];
+  const activeIndex = stages.indexOf(stage);
+  stages.forEach((name, index) => {
+    const item = byId(`progress-${name}`);
+    item.toggleAttribute("data-complete", index < activeIndex);
+    if (index === activeIndex) {
+      item.setAttribute("aria-current", "step");
+    } else {
+      item.removeAttribute("aria-current");
+    }
+  });
+}
+
+function focusStage(headingId) {
+  const heading = byId(headingId);
+  heading.setAttribute("tabindex", "-1");
+  heading.focus({ preventScroll: true });
+  heading.scrollIntoView({ block: "start" });
+}
+
+function showPlatformStage() {
+  byId("platform-step").hidden = false;
+  byId("platform-picker").hidden = false;
+  byId("journey-stage").hidden = true;
+  byId("details-stage").hidden = true;
+  byId("next-step").hidden = true;
+  byId("platform-step-number").textContent = "1";
+  setProgress("platform");
+  focusStage("platform-heading");
+}
+
+function showJourneyStage() {
+  byId("platform-step").hidden = false;
+  byId("platform-picker").hidden = true;
+  byId("journey-stage").hidden = false;
+  byId("details-stage").hidden = true;
+  byId("next-step").hidden = true;
+  byId("platform-step-number").textContent = "2";
+  byId("platform-summary").textContent = `${selectedPlatformName()} selected`;
+  updateMode();
+  setProgress("start");
+  focusStage("journey-heading");
+}
+
+function showDetailsStage() {
+  byId("platform-step").hidden = true;
+  byId("details-stage").hidden = false;
+  byId("next-step").hidden = false;
+  updateMode();
+  setProgress("details");
+  focusStage(selectedMode() === "library" ? "library-heading" : "language-heading");
 }
 
 function updateSubtitlePreset() {
@@ -176,6 +248,8 @@ function updatePlatform() {
   byId("server-token").disabled = isFolder;
   byId("server-prefix").disabled = isFolder;
   byId("server-user-id").disabled = !needsUser;
+  byId("continue-platform").textContent = `Continue with ${selectedPlatformName()}`;
+  byId("platform-summary").textContent = `${selectedPlatformName()} selected`;
   ["plex", "jellyfin", "emby"].forEach((name) => {
     byId(`${name}-help`).hidden = platform !== name;
   });
@@ -535,7 +609,6 @@ async function updateAppContext() {
     const payload = await response.json();
     desktopApp = response.ok && payload.desktop === true;
     byId("choose-media-folder").hidden = !desktopApp;
-    byId("desktop-pair-note").hidden = !desktopApp;
     byId("cli-pair-note").hidden = desktopApp;
     byId("local-port-field").hidden = desktopApp;
     byId("nas-permissions").hidden = desktopApp;
@@ -601,14 +674,14 @@ async function quickPairSubtitles() {
       return;
     }
     completed = true;
-    status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. PairCue has finished; reopen the app to pair another.`;
+    status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. Keep it beside the video; if ${selectedPlatformName()} does not see it, match the video's base name while keeping .mul.srt. Reopen PairCue to pair another.`;
     button.textContent = "Pairing complete";
   } catch (error) {
     status.textContent = error.message;
   } finally {
     button.disabled = completed;
     if (button.textContent === "Choose two subtitles…") {
-      button.textContent = "Pair two SRTs now";
+      button.textContent = "Choose two SRTs";
     }
   }
 }
@@ -663,6 +736,10 @@ byId("copy-config").addEventListener("click", copyConfig);
 byId("download-config").addEventListener("click", saveConfig);
 byId("choose-media-folder").addEventListener("click", chooseMediaFolder);
 byId("quick-pair").addEventListener("click", quickPairSubtitles);
+byId("continue-platform").addEventListener("click", showJourneyStage);
+byId("continue-journey").addEventListener("click", showDetailsStage);
+byId("change-platform").addEventListener("click", showPlatformStage);
+byId("change-journey").addEventListener("click", showJourneyStage);
 
 secretIds.forEach((id) => {
   byId(id).addEventListener("paste", () => {

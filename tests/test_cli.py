@@ -93,8 +93,8 @@ def test_desktop_quick_pair_creates_a_new_local_output_without_overwriting(
 
     assert first is not None
     assert second is not None
-    assert first.output == tmp_path / "Movie.en.cc.srt"
-    assert second.output == tmp_path / "Movie.en.cc-2.srt"
+    assert first.output == tmp_path / "Movie.mul.srt"
+    assert second.output == tmp_path / "Movie.paircue-2.mul.srt"
     assert "你好\n世界\nHello world" in first.output.read_text(encoding="utf-8")
     assert source.read_text(encoding="utf-8") == SOURCE
     assert target.read_text(encoding="utf-8") == TARGET
@@ -120,7 +120,7 @@ def test_desktop_quick_pair_removes_its_reservation_when_writing_fails(
     with pytest.raises(cli.SetupQuickPairError, match="permissions"):
         cli._quick_pair_subtitles("target-first")
 
-    assert not (tmp_path / "Movie.en.cc.srt").exists()
+    assert not (tmp_path / "Movie.mul.srt").exists()
 
 
 def test_setup_command_opens_packaged_private_wizard(
@@ -203,7 +203,7 @@ def test_desktop_quick_pair_can_finish_without_saving_setup(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    output = tmp_path / "Movie.en.cc.srt"
+    output = tmp_path / "Movie.mul.srt"
     state = SetupState(threading.Event(), quick_pair_output=output)
     monkeypatch.setattr("paircue.cli.run_setup_wizard", lambda *args, **kwargs: state)
 
@@ -225,7 +225,7 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
     )
     media = tmp_path / "Lesson.mkv"
     media.write_bytes(b"video")
-    output = tmp_path / "Lesson.en.cc.srt"
+    output = tmp_path / "Lesson.mul.srt"
     state = SetupState(threading.Event(), output_path=config, mode="single")
     pipeline = RecordingPipeline(output)
     picker_calls = 0
@@ -343,7 +343,7 @@ def test_learn_command_runs_one_local_video_without_a_media_server(
 ) -> None:
     media = tmp_path / "Japanese Film.mkv"
     media.write_bytes(b"video")
-    output = tmp_path / "Japanese Film.en.cc.srt"
+    output = tmp_path / "Japanese Film.mul.srt"
     pipeline = RecordingPipeline(output)
     observed_settings: list[PairCueSettings] = []
 

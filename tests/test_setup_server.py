@@ -33,6 +33,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     try:
         with httpx.Client(base_url=server.origin) as client:
             page = client.get("/")
+            favicon = client.get("/favicon.svg")
             readiness = client.get("/readiness")
             context = client.get("/context")
             forbidden = client.post(
@@ -47,7 +48,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
             )
             wrong_progress = client.get("/progress?token=wrong")
             pending_progress = client.get(f"/progress?token={server.token}")
-            completed_output = tmp_path / "Private Movie.ja.cc.srt"
+            completed_output = tmp_path / "Private Movie.mul.srt"
             server.state.update_progress(
                 "completed",
                 "created bilingual subtitles",
@@ -67,6 +68,9 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     assert page.status_code == 200
     assert "PairCue Setup" in page.text
     assert page.headers["cache-control"] == "no-store"
+    assert favicon.status_code == 200
+    assert favicon.headers["content-type"] == "image/svg+xml"
+    assert b"<svg" in favicon.content
     assert readiness.status_code == 200
     assert set(readiness.json()) == {"ready", "ffmpeg", "ffprobe"}
     assert context.json() == {"desktop": False}
@@ -80,7 +84,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     assert completed_progress.json() == {
         "phase": "completed",
         "message": "created bilingual subtitles",
-        "outputs": ["Private Movie.ja.cc.srt"],
+        "outputs": ["Private Movie.mul.srt"],
         "action_url": "",
         "terminal": True,
     }
@@ -193,7 +197,7 @@ def test_desktop_quick_pair_is_origin_protected_and_returns_only_the_output_name
     tmp_path: Path,
 ) -> None:
     assets = Path(paircue.__file__).with_name("setup")
-    output = tmp_path / "Private Library" / "Movie.en.cc.srt"
+    output = tmp_path / "Private Library" / "Movie.mul.srt"
     observed_orders: list[str] = []
 
     def quick_pair(order: str) -> QuickPairResult:
@@ -230,7 +234,7 @@ def test_desktop_quick_pair_is_origin_protected_and_returns_only_the_output_name
     assert invalid.status_code == 400
     assert completed.json() == {
         "completed": True,
-        "filename": "Movie.en.cc.srt",
+        "filename": "Movie.mul.srt",
         "message": "Created a bilingual subtitle (95%/90% matched).",
     }
     assert str(tmp_path) not in completed.text

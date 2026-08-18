@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0b10 - 2026-08-18
+
+- Turn first-run setup into three progressive stages: platform, first result, then only the
+  settings needed for that result. The platform and its primary action now fit in a 900px desktop
+  viewport instead of being buried below the marketing introduction.
+- Add Kodi, Infuse, VLC, NAS, and local media as an explicit **Other players** platform choice.
+- Name bilingual sidecars `Movie.mul.srt` using the ISO 639-2 multiple-languages code. Stop using
+  `.cc.srt`, which Plex and Jellyfin interpret as hearing-impaired captions.
+- Give Quick Pair the most prominent zero-setup path after platform selection while keeping one
+  video and library automation as clear alternatives.
+- Add a self-contained PairCue favicon and verify the progressive flow at desktop and mobile
+  widths without remote assets, horizontal overflow, HTTP errors, or console errors.
+
 ## 0.1.0b9 - 2026-08-18
 
 - Add **Quick Pair** to the desktop setup so a first-time user can choose two existing SRT files

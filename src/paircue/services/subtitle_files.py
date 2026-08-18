@@ -37,6 +37,7 @@ LANGUAGE_TAGS: dict[str, SubtitleLanguage] = {
 }
 
 SUPPORTED_EXTENSIONS = {".srt"}
+BILINGUAL_LANGUAGE_TAG = "mul"
 MUSIC_MARKS = re.compile(r"[♪♫♬♩]")
 BRACKETED_EFFECT = re.compile(r"\s*[\[【][^\]】]*[\]】]\s*")
 PARENTHESIZED_EFFECT = re.compile(r"\s*[（(][^）)]*[）)]\s*")
@@ -77,7 +78,7 @@ def discover_sidecars(media_path: Path) -> Sidecars:
     bilingual: Path | None = None
     for candidate in media_path.parent.glob(f"{media_path.stem}.*.srt"):
         tag = candidate.name[len(media_path.stem) + 1 : -4].lower()
-        if tag in {"zh-tw.cc", "bilingual"}:
+        if tag in {BILINGUAL_LANGUAGE_TAG, "zh-tw.cc", "bilingual"}:
             bilingual = candidate
             continue
         language = classify_sidecar(media_path, candidate)
@@ -101,24 +102,26 @@ def find_language_sidecar(
     *,
     bilingual: bool = False,
 ) -> Path | None:
-    """Find an SRT sidecar matching a requested language tag or known alias."""
+    """Find a monolingual language track or the standard multiple-language track."""
 
     prefix_length = len(media_path.stem) + 1
     for candidate in media_path.parent.glob(f"{media_path.stem}.*.srt"):
         tag = candidate.name[prefix_length:-4]
-        is_bilingual = tag.lower().endswith(".cc")
-        if bilingual != is_bilingual:
+        if bilingual:
+            if tag.casefold() == BILINGUAL_LANGUAGE_TAG:
+                return candidate
             continue
-        if is_bilingual:
-            tag = tag[:-3]
+        if tag.casefold() == BILINGUAL_LANGUAGE_TAG or tag.casefold().endswith(".cc"):
+            continue
         if language_matches(tag, language):
             return candidate
     return None
 
 
 def sidecar_path(media_path: Path, language: str, *, bilingual: bool = False) -> Path:
-    suffix = ".cc.srt" if bilingual else ".srt"
-    return media_path.parent / f"{media_path.stem}.{language}{suffix}"
+    if bilingual:
+        return media_path.parent / f"{media_path.stem}.{BILINGUAL_LANGUAGE_TAG}.srt"
+    return media_path.parent / f"{media_path.stem}.{language}.srt"
 
 
 def parse_srt(path: Path) -> list[srt.Subtitle]:

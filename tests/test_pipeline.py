@@ -152,7 +152,7 @@ def test_pipeline_writes_complete_atomic_outputs(tmp_path: Path) -> None:
 
     assert result.status == "completed"
     assert (tmp_path / "Movie.zh-TW.srt").exists()
-    assert (tmp_path / "Movie.zh-TW.cc.srt").exists()
+    assert (tmp_path / "Movie.mul.srt").exists()
     assert not list(tmp_path.glob(".*.tmp"))
 
 
@@ -161,7 +161,7 @@ def test_pipeline_does_not_publish_partial_translation(tmp_path: Path) -> None:
 
     assert result.status == "failed"
     assert not (tmp_path / "Movie.zh-TW.srt").exists()
-    assert not (tmp_path / "Movie.zh-TW.cc.srt").exists()
+    assert not (tmp_path / "Movie.mul.srt").exists()
 
 
 def test_target_only_file_does_not_count_as_complete_bilingual_output(tmp_path: Path) -> None:
@@ -174,7 +174,7 @@ def test_target_only_file_does_not_count_as_complete_bilingual_output(tmp_path: 
     result = _pipeline(tmp_path, FullTranslator()).process(item)
 
     assert result.status == "completed"
-    assert (tmp_path / "Movie.zh-TW.cc.srt").exists()
+    assert (tmp_path / "Movie.mul.srt").exists()
 
 
 def test_pipeline_uses_custom_target_language_in_output_names(tmp_path: Path) -> None:
@@ -183,7 +183,7 @@ def test_pipeline_uses_custom_target_language_in_output_names(tmp_path: Path) ->
     assert result.status == "completed"
     assert "to ja" in result.message
     assert (tmp_path / "Movie.ja.srt").exists()
-    assert (tmp_path / "Movie.ja.cc.srt").exists()
+    assert (tmp_path / "Movie.mul.srt").exists()
     assert not (tmp_path / "Movie.zh-TW.srt").exists()
 
 
@@ -218,7 +218,7 @@ def test_download_only_mode_fetches_and_merges_both_languages(tmp_path: Path) ->
     assert result.status == "completed"
     assert result.message == "merged existing subtitle tracks (100%/100% matched)"
     assert downloader.requests == [{"en", "ja"}]
-    assert "Hello\nこんにちは" in (tmp_path / "Lesson.en.cc.srt").read_text()
+    assert "Hello\nこんにちは" in (tmp_path / "Lesson.mul.srt").read_text()
 
 
 def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: Path) -> None:
@@ -238,7 +238,7 @@ def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: 
     assert result.message == "aligned and translated 1 cues from ja to en"
     assert synchronizer.paths == [tmp_path / "Lesson.ja.srt"]
     assert (tmp_path / "Lesson.en.srt").exists()
-    bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
+    bilingual = (tmp_path / "Lesson.mul.srt").read_text(encoding="utf-8")
     assert "こんにちは\n翻譯 0" in bilingual
 
 
@@ -260,7 +260,7 @@ def test_pipeline_generates_missing_source_then_builds_bilingual_track(tmp_path:
     assert result.message == "generated and translated 1 cues from en to zh-TW"
     assert transcriber.calls == [(media, "en")]
     assert synchronizer.paths == []
-    assert (tmp_path / "New Movie.zh-TW.cc.srt").exists()
+    assert (tmp_path / "New Movie.mul.srt").exists()
 
 
 def test_pipeline_merges_two_existing_languages_without_ai(tmp_path: Path) -> None:
@@ -282,5 +282,5 @@ def test_pipeline_merges_two_existing_languages_without_ai(tmp_path: Path) -> No
     assert result.status == "completed"
     assert result.message == "merged existing subtitle tracks (100%/100% matched)"
     assert synchronizer.paths == [tmp_path / "Lesson.ja.srt", tmp_path / "Lesson.en.srt"]
-    bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
+    bilingual = (tmp_path / "Lesson.mul.srt").read_text(encoding="utf-8")
     assert "Hello\nこんにちは" in bilingual

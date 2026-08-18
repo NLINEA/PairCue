@@ -8,6 +8,7 @@
       content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     >
     <title>PairCue Setup</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <meta
       name="description"
       content="Create a private PairCue configuration without sending settings or API keys anywhere."
@@ -40,88 +41,128 @@
         <div id="system-check" class="system-check" role="status" aria-live="polite">
           Checking whether this device is ready for video…
         </div>
+        <ol class="setup-progress" aria-label="Setup progress">
+          <li id="progress-platform" aria-current="step"><span>1</span> Platform</li>
+          <li id="progress-start"><span>2</span> First result</li>
+          <li id="progress-details"><span>3</span> Details</li>
+        </ol>
       </section>
 
       <form id="setup-form" novalidate>
-        <section class="step" aria-labelledby="platform-heading">
-          <div class="step-number" aria-hidden="true">1</div>
+        <section id="platform-step" class="step wizard-stage" aria-labelledby="platform-heading">
+          <div id="platform-step-number" class="step-number" aria-hidden="true">1</div>
           <div class="step-content">
-            <p class="step-kicker">YOUR PLATFORM</p>
-            <h2 id="platform-heading">Where do you watch?</h2>
-            <div class="choice-grid" role="radiogroup" aria-label="Media platform">
-              <label class="choice-card">
-                <input type="radio" name="platform" value="plex" checked>
-                <span class="choice-title">Plex</span>
-                <span>Connect an existing Plex library</span>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="platform" value="jellyfin">
-                <span class="choice-title">Jellyfin</span>
-                <span>Use your Jellyfin API key</span>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="platform" value="emby">
-                <span class="choice-title">Emby</span>
-                <span>Use your Emby API key</span>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="platform" value="filesystem">
-                <span class="choice-title">Media folder</span>
-                <span>Use a NAS or local folder directly</span>
-              </label>
-            </div>
-
-            <p class="subsection-heading">How do you want to begin?</p>
-            <div class="choice-grid" role="radiogroup" aria-label="Starting point">
-              <label class="choice-card recommended-card">
-                <input type="radio" name="mode" value="single" checked>
-                <span class="recommendation">RECOMMENDED</span>
-                <span class="choice-title">Try one video</span>
-                <span>See a bilingual result before changing your library.</span>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="mode" value="library">
-                <span class="choice-title">Automate my library</span>
-                <span>Watch Plex, Jellyfin, Emby, or a media folder.</span>
-              </label>
-            </div>
-
-            <div id="single-note" class="journey-note">
-              <strong>No media server or Docker required.</strong>
-              PairCue will process one local video and write the learning subtitles beside it.
-              <span id="desktop-pair-note" hidden>
-                If you already have both subtitle files, use Quick Pair below.
-              </span>
-              <span id="cli-pair-note">
-                If you already have both subtitle files, skip this wizard and use
-                <code>paircue pair</code>.
-              </span>
-              Neither route needs an account or API key.
-            </div>
-
-            <aside id="quick-pair-card" class="quick-pair-card" hidden>
-              <div>
-                <p class="step-kicker">ZERO-SETUP QUICK PAIR</p>
-                <h3>Already have two SRT files?</h3>
-                <p>
-                  Choose the spoken subtitle, then the learning subtitle. PairCue combines them
-                  locally and shows the finished file—no account, API key, or upload.
-                </p>
-              </div>
-              <div class="quick-pair-actions">
-                <label>
-                  <span>First line in each subtitle cue</span>
-                  <select id="quick-pair-order">
-                    <option value="target-first">Learning language</option>
-                    <option value="source-first">Spoken language</option>
-                  </select>
+            <div id="platform-picker">
+              <p class="step-kicker">YOUR PLATFORM</p>
+              <h2 id="platform-heading">Where will you watch?</h2>
+              <p class="section-copy">
+                Choose this first. PairCue will tailor the next steps and create a standard
+                subtitle file for that player.
+              </p>
+              <div class="choice-grid platform-grid" role="radiogroup" aria-label="Media platform">
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="plex" checked>
+                  <span class="choice-title">Plex</span>
+                  <span>Bilingual tracks in your Plex library</span>
                 </label>
-                <button id="quick-pair" type="button">Pair two SRTs now</button>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="jellyfin">
+                  <span class="choice-title">Jellyfin</span>
+                  <span>Bilingual tracks in your Jellyfin library</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="emby">
+                  <span class="choice-title">Emby</span>
+                  <span>Bilingual tracks in your Emby library</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="platform" value="filesystem">
+                  <span class="choice-title">Other players</span>
+                  <span>Kodi, Infuse, VLC, NAS, or a media folder</span>
+                </label>
               </div>
-              <p id="quick-pair-status" class="quick-pair-status" role="status" aria-live="polite"></p>
-            </aside>
+              <div class="stage-actions">
+                <button id="continue-platform" class="primary-button" type="button">
+                  Continue with Plex
+                </button>
+              </div>
+            </div>
 
-            <div id="library-options" class="library-options" hidden>
+            <div id="journey-stage" hidden>
+              <div class="selection-summary">
+                <span><strong id="platform-summary">Plex selected</strong> · Step 1 complete</span>
+                <button id="change-platform" type="button">Change platform</button>
+              </div>
+              <p class="step-kicker">YOUR FIRST RESULT</p>
+              <h2 id="journey-heading">What should PairCue do first?</h2>
+
+              <aside id="quick-pair-card" class="quick-pair-card" hidden>
+                <div>
+                  <p class="step-kicker">FASTEST · NO SETUP</p>
+                  <h3>Make one bilingual subtitle now</h3>
+                  <p>
+                    Already have two SRT files? Choose the spoken subtitle, then the learning
+                    subtitle. PairCue combines them locally with no account, API key, or upload.
+                  </p>
+                </div>
+                <div class="quick-pair-actions">
+                  <label>
+                    <span>First line in each subtitle cue</span>
+                    <select id="quick-pair-order">
+                      <option value="target-first">Learning language</option>
+                      <option value="source-first">Spoken language</option>
+                    </select>
+                  </label>
+                  <button id="quick-pair" type="button">Choose two SRTs</button>
+                </div>
+                <p id="quick-pair-status" class="quick-pair-status" role="status" aria-live="polite"></p>
+              </aside>
+
+              <p class="subsection-heading">Or let PairCue handle a video or library</p>
+              <div class="choice-grid" role="radiogroup" aria-label="Starting point">
+                <label class="choice-card recommended-card">
+                  <input type="radio" name="mode" value="single" checked>
+                  <span class="recommendation">START SMALL</span>
+                  <span class="choice-title">Try one video</span>
+                  <span>Find, generate, translate, and pair one title.</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="mode" value="library">
+                  <span class="choice-title">Automate my library</span>
+                  <span>Keep new titles supplied with bilingual subtitles.</span>
+                </label>
+              </div>
+
+              <div id="single-note" class="journey-note">
+                <strong>No Docker required for one video.</strong>
+                PairCue saves your language choices, opens a video window, and shows the finished
+                bilingual subtitle in your file manager.
+                <span id="cli-pair-note">
+                  If you already have both subtitle files, the command-line option is
+                  <code>paircue pair</code>.
+                </span>
+              </div>
+
+              <div class="stage-actions split-actions">
+                <button id="continue-journey" class="primary-button" type="button">
+                  Set up one video
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="details-stage" hidden>
+          <div class="selection-summary details-summary">
+            <span><strong id="details-summary">Plex · One video</strong> · Steps 1–2 complete</span>
+            <button id="change-journey" type="button">Change start</button>
+          </div>
+
+          <section id="library-options" class="step library-options" aria-labelledby="library-heading" hidden>
+            <div class="step-number" aria-hidden="true">3</div>
+            <div class="step-content">
+              <p class="step-kicker">CONNECT YOUR LIBRARY</p>
+              <h2 id="library-heading">Where can PairCue reach your media?</h2>
               <div class="field-grid inset-panel">
                 <div class="field-control">
                   <label for="host-media-path">Media folder on this machine or NAS</label>
@@ -142,12 +183,12 @@
                 <label>
                   <span>Server address</span>
                   <input id="server-url" type="url" value="http://127.0.0.1:32400" autocomplete="off">
-                  <small>Use the server's local network address. Do not paste a Plex web-app page.</small>
+                  <small>Use the server's local network address. Do not paste a web-app page.</small>
                 </label>
                 <label>
                   <span>Server token or API key</span>
                   <input id="server-token" type="password" autocomplete="new-password">
-                  <small>Stored only in the downloaded file.</small>
+                  <small>Stored only in the private local setup file.</small>
                 </label>
                 <label id="user-id-field" hidden>
                   <span>User ID</span>
@@ -192,11 +233,10 @@
                 <p class="hint">Change these only if PairCue cannot write beside your videos.</p>
               </details>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="step" aria-labelledby="language-heading">
-          <div class="step-number" aria-hidden="true">2</div>
+        <section id="language-step" class="step" aria-labelledby="language-heading">
+          <div id="language-step-number" class="step-number" aria-hidden="true">3</div>
           <div class="step-content">
             <p class="step-kicker">YOUR LEARNING PAIR</p>
             <h2 id="language-heading">Which two languages?</h2>
@@ -251,8 +291,8 @@
           </div>
         </section>
 
-        <section class="step" aria-labelledby="automation-heading">
-          <div class="step-number" aria-hidden="true">3</div>
+        <section id="automation-step" class="step" aria-labelledby="automation-heading">
+          <div id="automation-step-number" class="step-number" aria-hidden="true">4</div>
           <div class="step-content">
             <p class="step-kicker">AUTOMATION</p>
             <h2 id="automation-heading">How should missing subtitles be filled?</h2>
@@ -382,7 +422,7 @@
           </div>
         </section>
 
-        <section class="finish" aria-labelledby="finish-heading">
+        <section id="finish-step" class="finish" aria-labelledby="finish-heading">
           <div>
             <p class="step-kicker">READY</p>
             <h2 id="finish-heading">Save your PairCue setup</h2>
@@ -401,9 +441,10 @@
             <pre id="config-preview" tabindex="0"></pre>
           </details>
         </section>
+        </div>
       </form>
 
-      <section id="next-step" class="next-step" aria-labelledby="next-heading" aria-live="polite">
+      <section id="next-step" class="next-step" aria-labelledby="next-heading" aria-live="polite" hidden>
         <span id="next-number" class="next-number">NEXT</span>
         <div>
           <h2 id="next-heading">Try one video</h2>

@@ -27,6 +27,7 @@ MAX_EXISTING_CONFIG_BYTES = 1024 * 1024
 ASSETS: dict[str, tuple[str, str]] = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/favicon.svg": ("favicon.svg", "image/svg+xml"),
     "/setup.css": ("setup.css", "text/css; charset=utf-8"),
     "/setup.js": ("setup.js", "text/javascript; charset=utf-8"),
 }
