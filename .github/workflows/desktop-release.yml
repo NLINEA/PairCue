@@ -1,0 +1,95 @@
+name: Desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+      - run: ruff check .
+      - run: mypy src/paircue
+      - run: pytest --cov=paircue --cov-report=term-missing --cov-fail-under=60
+      - run: python scripts/check_runtime_licenses.py
+      - run: pip-audit
+
+  build:
+    needs: verify
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            label: macOS arm64
+            artifact: paircue-macos-arm64
+            archive: PairCue-macOS-arm64.zip
+          - runner: macos-15-intel
+            label: macOS Intel
+            artifact: paircue-macos-x64
+            archive: PairCue-macOS-x64.zip
+          - runner: windows-latest
+            label: Windows x64
+            artifact: paircue-windows-x64
+            archive: PairCue-windows-x64.zip
+          - runner: ubuntu-latest
+            label: Linux x64
+            artifact: paircue-linux-x64
+            archive: PairCue-linux-x64.tar.gz
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install '.[release]'
+      - run: python scripts/build_desktop.py
+      - name: Archive macOS build
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent release/stage/PairCue-* "release/${{ matrix.archive }}"
+      - name: Archive Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path release/stage/PairCue-* -DestinationPath "release/${{ matrix.archive }}"
+      - name: Archive Linux build
+        if: runner.os == 'Linux'
+        run: tar -C release/stage -czf "release/${{ matrix.archive }}" PairCue-*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/${{ matrix.archive }}
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: release
+          merge-multiple: true
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --verify-tag --generate-notes
+          gh release upload "$RELEASE_TAG" release/* --clobber

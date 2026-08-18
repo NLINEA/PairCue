@@ -624,6 +624,26 @@ summary {
   border-bottom: 1px solid var(--line);
 }
 
+.next-step[data-phase="choosing"],
+.next-step[data-phase="processing"],
+.next-step[data-phase="saved"] {
+  border-color: #426155;
+}
+
+.next-step[data-phase="completed"] {
+  border-color: var(--mint);
+  background: var(--mint-dark);
+}
+
+.next-step[data-phase="failed"] {
+  border-color: #8e493b;
+  background: #271713;
+}
+
+.next-step[data-phase="cancelled"] {
+  border-color: var(--line);
+}
+
 .next-number {
   color: var(--coral);
   font-size: 0.72rem;

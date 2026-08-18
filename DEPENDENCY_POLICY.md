@@ -24,6 +24,12 @@ The gate walks the installed production graph from PairCue and fails closed on u
 metadata. `license_overrides` may be used only after a manual upstream-license review, with the
 reason recorded in the pull request.
 
+Desktop archives use PyInstaller only at build time under its GPL-2.0-or-later Bootloader Exception.
+Each archive must contain PairCue's license and notices, a runtime CycloneDX SBOM, the Python
+license, and the installed license or notice files for every distribution in PairCue's runtime
+dependency graph. The archive also carries the complete packaged license files for PyInstaller and
+its official hooks. The build fails closed if one of those distributions has no packaged license.
+
 ## External services and executables
 
 - Subtitle-provider integrations must use documented official APIs and user-supplied credentials.
@@ -31,8 +37,9 @@ reason recorded in the pull request.
 - PairCue does not redistribute downloaded subtitles. Users are responsible for provider terms and
   for the rights to download, transform, and store subtitle content in their jurisdiction.
 - FFmpeg is an external executable. Its effective license depends on how it was built. PairCue does
-  not publish a prebuilt container image; anyone distributing a locally built image must satisfy
-  the FFmpeg build's applicable license and source-notice obligations.
+  not include it in source or desktop archives and does not publish a prebuilt container image;
+  anyone distributing a locally built image must satisfy the FFmpeg build's applicable license and
+  source-notice obligations.
 - Optional model engines and weights must be reviewed separately before they can be bundled or
   distributed. A permissive engine license does not automatically cover every model or dataset.
 

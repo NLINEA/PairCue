@@ -7,7 +7,8 @@ import secrets
 import shutil
 import threading
 import webbrowser
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -36,6 +37,31 @@ class SetupState:
     output_path: Path | None = None
     backup_path: Path | None = None
     mode: str = ""
+    phase: str = "setup"
+    message: str = "Finish the setup in your browser."
+    outputs: tuple[Path, ...] = ()
+    delivered: threading.Event = field(default_factory=threading.Event)
+    _progress_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def update_progress(
+        self,
+        phase: str,
+        message: str,
+        outputs: tuple[Path, ...] = (),
+    ) -> None:
+        with self._progress_lock:
+            self.phase = phase
+            self.message = message
+            self.outputs = outputs
+
+    def progress_payload(self) -> dict[str, object]:
+        with self._progress_lock:
+            return {
+                "phase": self.phase,
+                "message": self.message,
+                "outputs": [path.name for path in self.outputs],
+                "terminal": self.phase in {"completed", "failed", "cancelled"},
+            }
 
 
 class SetupHTTPServer(ThreadingHTTPServer):
@@ -63,6 +89,16 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
         path = urlparse(self.path).path
+        if path == "/progress":
+            supplied = parse_qs(urlparse(self.path).query).get("token", [""])[0]
+            if not hmac.compare_digest(supplied, self.server.token):
+                self.send_error(HTTPStatus.FORBIDDEN)
+                return
+            payload = self.server.state.progress_payload()
+            self._json_response(HTTPStatus.OK, payload)
+            if bool(payload["terminal"]):
+                self.server.state.delivered.set()
+            return
         if path == "/readiness":
             ffmpeg = shutil.which("ffmpeg") is not None
             ffprobe = shutil.which("ffprobe") is not None
@@ -122,7 +158,7 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
             encoded = config.encode("utf-8")
             if len(encoded) > MAX_CONFIG_BYTES:
                 raise ValueError("configuration is too large")
-            _validate_config(config)
+            _validate_config(config, mode=mode)
             with self.server.save_lock:
                 if self.server.state.saved.is_set():
                     self._json_response(
@@ -134,11 +170,16 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                 self.server.state.output_path = output
                 self.server.state.backup_path = backup
                 self.server.state.mode = mode
+                self.server.state.update_progress(
+                    "saved",
+                    "Your private setup is saved on this device.",
+                )
                 self._json_response(
                     HTTPStatus.OK,
                     {
                         "saved": True,
                         "filename": output.name,
+                        "location": str(output.parent),
                         "backup": backup.name if backup is not None else "",
                     },
                 )
@@ -192,7 +233,12 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
         return
 
 
-def run_setup_wizard(assets_root: Path, output_path: Path) -> SetupState:
+def run_setup_wizard(
+    assets_root: Path,
+    output_path: Path,
+    *,
+    on_single_saved: Callable[[SetupState], None] | None = None,
+) -> SetupState:
     server = SetupHTTPServer(assets_root, output_path)
     thread = threading.Thread(target=server.serve_forever, name="paircue-setup", daemon=True)
     thread.start()
@@ -205,6 +251,25 @@ def run_setup_wizard(assets_root: Path, output_path: Path) -> SetupState:
     try:
         while not server.state.saved.wait(0.25):
             continue
+        if (
+            server.state.output_path is not None
+            and server.state.mode == "single"
+            and on_single_saved is not None
+        ):
+            try:
+                on_single_saved(server.state)
+            except Exception as exc:
+                log.error("guided first run failed (%s)", type(exc).__name__)
+                server.state.update_progress(
+                    "failed",
+                    "PairCue could not finish this run. Reopen PairCue to try again.",
+                )
+            if server.state.phase not in {"completed", "failed", "cancelled"}:
+                server.state.update_progress(
+                    "failed",
+                    "PairCue stopped before finishing. Reopen PairCue to try again.",
+                )
+            server.state.delivered.wait(timeout=30)
     except KeyboardInterrupt:
         print("\nPairCue Setup cancelled.")
     finally:
@@ -214,7 +279,7 @@ def run_setup_wizard(assets_root: Path, output_path: Path) -> SetupState:
     return server.state
 
 
-def _validate_config(config: str) -> None:
+def _validate_config(config: str, *, mode: str) -> None:
     values: dict[str, str] = {}
     for line in config.splitlines():
         stripped = line.strip()
@@ -227,4 +292,8 @@ def _validate_config(config: str) -> None:
         if not isinstance(decoded, str):
             raise ValueError("configuration values must be strings")
         values[name.removeprefix("PAIRCUE_").casefold()] = decoded
+    if mode == "single":
+        # One-video learning deliberately bypasses the selected media server, while retaining the
+        # user's platform choice in the saved file for the next setup visit.
+        values["platform"] = "filesystem"
     PairCueSettings.model_validate(values)

@@ -24,12 +24,13 @@ class DiagnosticCheck:
 
 
 def run_diagnostics(settings: PairCueSettings) -> list[DiagnosticCheck]:
+    ffmpeg_required = settings.transcription_enabled
     checks = [
         DiagnosticCheck("Python", "ok", sys.version.split()[0]),
         _directory_check("Media library", settings.media_root, require_write=True),
         _directory_check("State storage", settings.state_dir, require_write=True),
-        _executable_check("FFmpeg", "ffmpeg"),
-        _executable_check("FFprobe", "ffprobe"),
+        _executable_check("FFmpeg", "ffmpeg", required=ffmpeg_required),
+        _executable_check("FFprobe", "ffprobe", required=False),
         DiagnosticCheck("Platform", "ok", settings.platform),
     ]
 
@@ -109,8 +110,12 @@ def _nearest_existing_parent(path: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
-def _executable_check(name: str, command: str) -> DiagnosticCheck:
+def _executable_check(name: str, command: str, *, required: bool) -> DiagnosticCheck:
     executable = shutil.which(command)
     if executable is None:
-        return DiagnosticCheck(name, "error", f"{command} is not on PATH")
+        status: CheckStatus = "error" if required else "warning"
+        detail = f"{command} is not on PATH"
+        if not required:
+            detail += "; features that do not inspect media remain available"
+        return DiagnosticCheck(name, status, detail)
     return DiagnosticCheck(name, "ok", executable)

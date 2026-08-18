@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: PairCue version
-      placeholder: 0.1.0b6
+      placeholder: 0.1.0b7
     validations:
       required: true
   - type: dropdown

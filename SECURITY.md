@@ -20,6 +20,10 @@ with its one-time URL token and matching local Origin. It loads no remote assets
 `paircue.env` files and automatic backups use owner-only permissions; they contain secrets and must
 never be committed or shared.
 
+Frozen desktop apps store that file under `~/Library/Application Support/PairCue` on macOS,
+`%APPDATA%\\PairCue` on Windows, or `$XDG_CONFIG_HOME/paircue` (normally `~/.config/paircue`) on
+Linux. Source installs retain `paircue.env` in the folder where setup was started.
+
 When transcription is enabled, PairCue sends extracted audio chunks to the configured endpoint.
 When translation is enabled, it sends subtitle dialogue to the configured endpoint. These features
 are disabled or unconfigured by default; review the provider's access, retention, and privacy terms

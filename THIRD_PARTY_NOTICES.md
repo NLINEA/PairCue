@@ -38,3 +38,15 @@ terms and applicable copyright law.
 Translation and transcription endpoints are also user-configured network services. PairCue does
 not bundle their models, SDKs, or weights. Enabling transcription sends bounded audio extracts from
 the user's media to the configured service.
+
+## Desktop release packaging
+
+Desktop release archives are built with PyInstaller as a build-time tool. PyInstaller is licensed
+under GPL-2.0-or-later with its Bootloader Exception; that exception permits distributing the
+combined executable without imposing the GPL on PairCue. PyInstaller is not a PairCue runtime
+dependency and its source is not copied into this repository.
+
+Each desktop archive includes PairCue's MIT license, this notice, a CycloneDX runtime SBOM, the
+Python license, license or notice files collected from every installed runtime distribution, and
+the complete packaged license files for PyInstaller and its official hooks. The desktop archives do
+not include FFmpeg, FFprobe, translation models, or subtitle content.

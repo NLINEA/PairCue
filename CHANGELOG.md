@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.0b7 - 2026-08-18
+
+- Make platform selection the first setup decision, before choosing a one-video trial or
+  full-library automation.
+- Keep the first video's file selection, processing progress, failure guidance, and completed
+  bilingual result in one visual setup journey.
+- Add self-contained macOS, Windows, and Linux desktop release builds so first-time users do not
+  need Python or terminal commands.
+- Store desktop settings in the operating system's private application-data folder while retaining
+  working-directory configuration for source installs.
+- Include a runtime SBOM, Python license, and collected dependency license files in every desktop
+  archive without bundling FFmpeg, models, media, or subtitles.
+- Treat missing video tools as optional until speech transcription is enabled and add native video
+  filters plus a second Linux file-picker fallback.
+- Add a no-console-safe desktop entry point so double-click launches do not depend on terminal
+  streams being present.
+
 ## 0.1.0b6 - 2026-08-18
 
 - Add `paircue setup`, a packaged private visual wizard that saves a ready-to-use `paircue.env`

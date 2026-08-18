@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from paircue import diagnostics
-from paircue.cli import main
+from paircue.cli import _default_setup_output, main
 from paircue.config import PairCueSettings
 from paircue.models import MediaItem, ProcessResult
 from paircue.setup_server import SetupState
@@ -84,6 +84,19 @@ def test_setup_command_opens_packaged_private_wizard(
     assert capsys.readouterr().out.strip().endswith("/paircue/setup/index.html")
 
 
+def test_desktop_build_uses_the_native_private_settings_folder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("paircue.cli.sys.frozen", True, raising=False)
+    monkeypatch.setattr("paircue.cli.sys.platform", "darwin")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    assert _default_setup_output() == (
+        tmp_path / "Library" / "Application Support" / "PairCue" / "paircue.env"
+    )
+
+
 def test_bare_paircue_opens_setup_and_reports_saved_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -92,7 +105,10 @@ def test_bare_paircue_opens_setup_and_reports_saved_file(
     output = tmp_path / "paircue.env"
     state = SetupState(threading.Event(), output_path=output, mode="library")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("paircue.cli.run_setup_wizard", lambda assets, target: state)
+    monkeypatch.setattr(
+        "paircue.cli.run_setup_wizard",
+        lambda assets, target, *, on_single_saved: state,
+    )
 
     result = main([])
 
@@ -124,8 +140,13 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
         picker_calls += 1
         return media
 
+    def finish_setup(assets: Path, target: Path, *, on_single_saved: object) -> SetupState:
+        assert callable(on_single_saved)
+        on_single_saved(state)
+        return state
+
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("paircue.cli.run_setup_wizard", lambda assets, target: state)
+    monkeypatch.setattr("paircue.cli.run_setup_wizard", finish_setup)
     monkeypatch.setattr("paircue.cli._choose_media_path", choose_media)
     monkeypatch.setattr("paircue.cli.build_pipeline", lambda settings: pipeline)
     revealed: list[Path] = []
@@ -138,6 +159,8 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
     assert pipeline.closed is True
     assert pipeline.items[0].path == media
     assert revealed == [output]
+    assert state.phase == "completed"
+    assert state.outputs == (output,)
     captured = capsys.readouterr().out
     assert "Choose one video" in captured
     assert f"created: {output}" in captured
@@ -212,6 +235,58 @@ def test_doctor_json_reports_readiness_without_secrets(
     assert payload["ready"] is True
     assert "should-not-leak" not in json.dumps(payload)
     assert any(check["name"] == "FFmpeg" for check in payload["checks"])
+
+
+def test_doctor_treats_video_tools_as_optional_until_transcription_is_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    media = tmp_path / "media"
+    state = tmp_path / "state"
+    media.mkdir()
+    state.mkdir()
+    monkeypatch.setenv("PAIRCUE_PLATFORM", "filesystem")
+    monkeypatch.setenv("PAIRCUE_MEDIA_ROOT", str(media))
+    monkeypatch.setenv("PAIRCUE_STATE_DIR", str(state))
+    monkeypatch.setattr(diagnostics.shutil, "which", lambda command: None)
+
+    result = main(["doctor", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert result == 0
+    assert payload["ready"] is True
+    tool_checks = {
+        check["name"]: check["status"]
+        for check in payload["checks"]
+        if check["name"] in {"FFmpeg", "FFprobe"}
+    }
+    assert tool_checks == {"FFmpeg": "warning", "FFprobe": "warning"}
+
+
+def test_doctor_requires_ffmpeg_when_transcription_is_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    media = tmp_path / "media"
+    state = tmp_path / "state"
+    media.mkdir()
+    state.mkdir()
+    monkeypatch.setenv("PAIRCUE_PLATFORM", "filesystem")
+    monkeypatch.setenv("PAIRCUE_MEDIA_ROOT", str(media))
+    monkeypatch.setenv("PAIRCUE_STATE_DIR", str(state))
+    monkeypatch.setenv("PAIRCUE_TRANSCRIPTION_ENABLED", "true")
+    monkeypatch.setenv("PAIRCUE_TRANSCRIPTION_API_KEY", "test-key")
+    monkeypatch.setattr(diagnostics.shutil, "which", lambda command: None)
+
+    result = main(["doctor", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert result == 1
+    assert payload["ready"] is False
+    ffmpeg = next(check for check in payload["checks"] if check["name"] == "FFmpeg")
+    assert ffmpeg["status"] == "error"
 
 
 def test_doctor_json_redacts_invalid_configuration_input(

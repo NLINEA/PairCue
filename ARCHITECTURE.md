@@ -34,6 +34,7 @@ flowchart LR
 
     Setup["Private setup wizard"] --> Loopback["Token-protected loopback server"]
     Loopback --> Config["Atomic private paircue.env"]
+    Loopback --> Progress["Filename-only first-run progress"]
 
     Browser["Optional browser UI"] --> DownloadAPI["Isolated Download Station app"]
     DownloadAPI --> Synology["Synology API / torrent watch folder"]
@@ -48,6 +49,11 @@ one-time random URL token and same-origin check protect the configuration write.
 assets, performs no analytics, writes `paircue.env` with owner-only permissions, and backs up an
 existing regular file before replacement. The `learn` command reuses the same pipeline with
 temporary state and a media root restricted to the selected video's parent directory.
+
+Desktop releases freeze the same independently written Python application and packaged local setup
+assets into a self-contained operating-system app. They store configuration in the user's native
+application-data folder, contain the runtime license bundle and SBOM, and deliberately exclude
+FFmpeg, provider models, subtitles, and media.
 
 ## Processing contract
 

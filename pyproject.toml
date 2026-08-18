@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paircue"
-version = "0.1.0b6"
+version = "0.1.0b7"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,6 +52,9 @@ dev = [
   "pytest-cov>=6.2,<7",
   "ruff>=0.12,<1",
 ]
+release = [
+  "pyinstaller>=6.21,<7",
+]
 
 [project.scripts]
 paircue = "paircue.cli:main"
@@ -61,6 +64,7 @@ packages = ["src/paircue"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
+pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]

@@ -14,18 +14,46 @@ custom video player.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
-## Start with the smallest win
+## Download and open (recommended)
 
-From the checked-out project folder, install PairCue with Python 3.11 or newer:
+No Python or terminal is needed. Open [GitHub Releases](../../releases), download the archive for
+your computer, unzip it, and open **PairCue**:
 
-```bash
-python3 -m pip install .
-```
+| Your computer | Download |
+|---|---|
+| Apple silicon Mac | `PairCue-macOS-arm64.zip` |
+| Intel Mac | `PairCue-macOS-x64.zip` |
+| Windows | `PairCue-windows-x64.zip` |
+| Linux | `PairCue-linux-x64.tar.gz` |
+
+These early beta apps are not yet signed by Apple or Microsoft. On macOS, right-click PairCue and
+choose **Open** the first time. Windows may show an unrecognized-publisher warning. Only download
+PairCue from this repository's Releases page.
+
+## Your first run
+
+PairCue opens a private setup page in your browser. The first question is deliberately the place
+where you watch: **Plex, Jellyfin, Emby, or a media folder**. After choosing the platform, choose
+**Try one video** or **Automate my library**.
+
+For the easiest first run, choose **Try one video**. Pick the two languages and tell PairCue whether
+you already have zero, one, or two subtitle tracks. Search and translation fields appear only when
+they are relevant. Press **Save and choose a video**, then select one movie or episode in the system
+file window. Progress and the final result stay visible on the setup page; a successful bilingual
+subtitle is revealed in Finder or your file manager.
+
+The setup is stored only on this device and an older configuration is backed up before replacement.
+PairCue has no analytics, PairCue account, remote setup assets, or saved browser form data. Desktop
+builds use the operating system's private application-settings folder.
+
+FFmpeg and FFprobe are optional and are not bundled. Search, translation, and combining two SRT
+tracks work without them. Extracting embedded subtitles, audio-based timing alignment, and speech
+generation need a separate FFmpeg installation.
 
 ### Already have two subtitle files?
 
-Already have two subtitle files from the same movie? Create a learning track without configuring a
-media server, API key, or database:
+Developers and command-line users can create a learning track without a media server, API key, or
+database:
 
 ```bash
 paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt
@@ -33,27 +61,6 @@ paircue pair Movie.ja.srt Movie.en.srt -o Movie.en.cc.srt
 
 PairCue matches by time, including one-to-many cue differences, and refuses low-confidence pairs.
 Use `--order source-first` to reverse the two lines. Nothing is uploaded by this command.
-
-### Want to try the complete flow on one video?
-
-Open the private visual setup wizard—there is no command to remember beyond the product name:
-
-```bash
-paircue
-```
-
-Choose **Try one video**, select the two languages, and tell PairCue whether you already have zero,
-one, or two subtitle tracks. Fields for search or translation appear only when they are needed.
-Press **Save and choose a video**. The wizard talks
-only to the PairCue process on your own device and has no analytics, account, or stored browser
-form data. It writes the file for you and backs up an older configuration before replacement.
-After saving, PairCue opens the system file chooser automatically. Pick one video and the first run
-starts—there is no path or second command to type. It reveals the completed subtitle in Finder or
-the file manager. Later runs use `paircue learn --config paircue.env`.
-
-The setup page also checks whether FFmpeg and FFprobe are available before the first video. PairCue
-does not bundle those tools, preserving a clear license boundary. Two existing SRT tracks can still
-be merged without them.
 
 `paircue learn` needs no media server or persistent database. It uses existing sidecars first,
 then the enabled search, speech-generation, and translation fallbacks, and writes the result beside
@@ -75,9 +82,9 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
 ## Automate the library after one video works
 
-Run `paircue` again and choose **Automate my library**. The saved `paircue.env` contains
-both Docker host settings and PairCue settings, so there is only one file to manage. Put it beside
-`docker-compose.yml`, then run:
+Run PairCue again, choose the platform first, then choose **Automate my library**. The saved
+`paircue.env` contains both Docker host settings and PairCue settings, so there is only one file to
+manage. Put it beside `docker-compose.yml`, then run:
 
 ```bash
 docker compose --env-file paircue.env build core
@@ -293,6 +300,15 @@ magnet or upload a small `.torrent` file.
 See [SECURITY.md](SECURITY.md) for private vulnerability reporting guidance.
 
 ## Development
+
+To install from source instead of using a desktop release, use Python 3.11 or newer:
+
+```bash
+python3 -m pip install .
+paircue
+```
+
+For contributors:
 
 ```bash
 python3.12 -m venv .venv

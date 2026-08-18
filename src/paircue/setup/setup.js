@@ -15,9 +15,6 @@ const secretIds = new Set([
 ]);
 
 function selectedPlatform() {
-  if (selectedMode() === "single") {
-    return "filesystem";
-  }
   return form.querySelector('input[name="platform"]:checked').value;
 }
 
@@ -283,6 +280,8 @@ function updatePreview() {
 
 function updateNextStep() {
   const library = selectedMode() === "library";
+  byId("next-step").removeAttribute("data-phase");
+  byId("next-number").textContent = "NEXT";
   if (library) {
     byId("next-heading").textContent = "Start the library service";
     byId("next-copy").textContent = "Put paircue.env beside docker-compose.yml, then run:";
@@ -370,13 +369,83 @@ async function saveConfig() {
     }
     button.textContent = "Saved";
     actionStatus.textContent = payload.backup
-      ? `Saved ${payload.filename}. Your previous file was backed up as ${payload.backup}.`
-      : `Saved ${payload.filename}. You can continue with the next step below.`;
+      ? `Saved in ${payload.location}. Your previous file was backed up as ${payload.backup}.`
+      : `Saved ${payload.filename} in ${payload.location}.`;
+    if (selectedMode() === "single") {
+      actionStatus.textContent = `Saved ${payload.filename}. Look for the video file window.`;
+      pollProgress(token);
+    }
   } catch (error) {
     button.disabled = false;
     button.textContent = selectedMode() === "library" ? "Save paircue.env" : "Save and choose a video";
     formError.textContent = `${error.message} You can still use “Copy config”.`;
     formError.hidden = false;
+  }
+}
+
+function renderProgress(payload) {
+  const panel = byId("next-step");
+  const number = byId("next-number");
+  const heading = byId("next-heading");
+  const copy = byId("next-copy");
+  const output = byId("next-command");
+  panel.dataset.phase = payload.phase;
+  output.textContent = Array.isArray(payload.outputs) ? payload.outputs.join("\n") : "";
+
+  if (payload.phase === "choosing") {
+    number.textContent = "1";
+    heading.textContent = "Choose one video";
+    copy.textContent = payload.message;
+    return;
+  }
+  if (payload.phase === "processing" || payload.phase === "saved") {
+    number.textContent = "•••";
+    heading.textContent = "PairCue is working";
+    copy.textContent = payload.message;
+    return;
+  }
+  if (payload.phase === "completed") {
+    number.textContent = "DONE";
+    heading.textContent = "Your bilingual subtitle is ready";
+    copy.textContent = `${payload.message} The finished file is highlighted in your file manager.`;
+    return;
+  }
+  if (payload.phase === "cancelled") {
+    number.textContent = "SAVED";
+    heading.textContent = "Your setup is ready for later";
+    copy.textContent = payload.message;
+    return;
+  }
+  if (payload.phase === "failed") {
+    number.textContent = "CHECK";
+    heading.textContent = "PairCue needs one more thing";
+    copy.textContent = payload.message;
+  }
+}
+
+async function pollProgress(token) {
+  while (true) {
+    try {
+      const response = await fetch(`/progress?token=${encodeURIComponent(token)}`, {
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error("progress check failed");
+      }
+      renderProgress(payload);
+      if (payload.terminal) {
+        return;
+      }
+    } catch {
+      byId("next-step").dataset.phase = "failed";
+      byId("next-number").textContent = "CHECK";
+      byId("next-heading").textContent = "PairCue stopped reporting progress";
+      byId("next-copy").textContent =
+        "Your setup is saved. Reopen PairCue to check the video or try again.";
+      return;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 650));
   }
 }
 
@@ -399,7 +468,7 @@ async function updateSystemReadiness() {
     }
     status.dataset.status = "needs-attention";
     status.textContent =
-      "FFmpeg and FFprobe are needed for video. You can still merge two existing SRT files without them.";
+      "Optional video tools are missing. Search, translation, and two SRT tracks still work; embedded subtitles, timing alignment, and speech generation need FFmpeg.";
   } catch {
     status.textContent = "PairCue could not check the video tools. Setup can still continue.";
   }

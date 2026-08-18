@@ -24,7 +24,7 @@ from paircue.factory import build_pipeline, build_runtime
 from paircue.models import MediaItem
 from paircue.services.download_station import DownloadStationClient
 from paircue.services.subtitle_files import merge_bilingual_subtitles, parse_srt, write_srt
-from paircue.setup_server import run_setup_wizard
+from paircue.setup_server import SetupState, run_setup_wizard
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -181,19 +181,25 @@ def _setup(*, no_open: bool) -> int:
     if no_open:
         print(setup_page)
         return 0
-    state = run_setup_wizard(setup_page.parent, Path.cwd() / "paircue.env")
-    if state.output_path is None:
-        return 1
-    print(f"Saved private configuration: {state.output_path}")
-    if state.backup_path is not None:
-        print(f"Previous configuration backed up to: {state.backup_path}")
-    if state.mode == "single":
+    exit_code = 0
+
+    def continue_with_one_video(state: SetupState) -> None:
+        nonlocal exit_code
+        state.update_progress("choosing", "Choose one movie or episode in the file window.")
         print("Choose one video to create your first learning track.")
         selected = _choose_media_path()
         if selected is None:
+            state.update_progress(
+                "cancelled",
+                "No video was selected. Your setup is saved, so you can try again anytime.",
+            )
             print("No video selected. Your setup is saved; run `paircue learn` whenever ready.")
-            return 0
-        return _learn(
+            return
+        state.update_progress(
+            "processing",
+            f"Creating bilingual subtitles for {selected.name}…",
+        )
+        exit_code = _learn(
             argparse.Namespace(
                 media=selected,
                 config=state.output_path,
@@ -203,9 +209,21 @@ def _setup(*, no_open: bool) -> int:
                 title=None,
                 year=None,
                 reveal_output=True,
+                setup_state=state,
             )
         )
-    return 0
+
+    state = run_setup_wizard(
+        setup_page.parent,
+        _default_setup_output(),
+        on_single_saved=continue_with_one_video,
+    )
+    if state.output_path is None:
+        return 1
+    print(f"Saved private configuration: {state.output_path}")
+    if state.backup_path is not None:
+        print(f"Previous configuration backed up to: {state.backup_path}")
+    return exit_code
 
 
 def _pair(args: argparse.Namespace) -> int:
@@ -251,7 +269,9 @@ def _learn(args: argparse.Namespace) -> int:
         if not title:
             raise ValueError("title must not be empty")
     except (OSError, ValueError) as exc:
-        print(f"PairCue could not open this video: {exc}", file=sys.stderr)
+        message = f"PairCue could not open this video: {exc}"
+        _update_guided_progress(args, "failed", message)
+        print(message, file=sys.stderr)
         return 2
 
     with tempfile.TemporaryDirectory(prefix="paircue-learn-") as temporary_state:
@@ -278,7 +298,9 @@ def _learn(args: argparse.Namespace) -> int:
             )
             pipeline = build_pipeline(settings)
         except (OSError, ValidationError, ValueError) as exc:
-            print(f"PairCue configuration is not ready: {_safe_error(exc)}", file=sys.stderr)
+            message = f"PairCue configuration is not ready: {_safe_error(exc)}"
+            _update_guided_progress(args, "failed", message)
+            print(message, file=sys.stderr)
             return 2
 
         try:
@@ -304,7 +326,33 @@ def _learn(args: argparse.Namespace) -> int:
         and bool(getattr(args, "reveal_output", False))
     ):
         _reveal_path(result.outputs[-1])
-    return 1 if result.status == "failed" else 0
+    guided = isinstance(getattr(args, "setup_state", None), SetupState)
+    has_bilingual = any(path.name.casefold().endswith(".cc.srt") for path in result.outputs)
+    if result.status == "failed":
+        _update_guided_progress(args, "failed", result.message)
+        return 1
+    if guided and not has_bilingual:
+        _update_guided_progress(
+            args,
+            "failed",
+            "PairCue found only one language track. Add the other language or enable translation, "
+            "then reopen PairCue.",
+            result.outputs,
+        )
+        return 1
+    _update_guided_progress(args, "completed", result.message, result.outputs)
+    return 0
+
+
+def _update_guided_progress(
+    args: argparse.Namespace,
+    phase: str,
+    message: str,
+    outputs: tuple[Path, ...] = (),
+) -> None:
+    state = getattr(args, "setup_state", None)
+    if isinstance(state, SetupState):
+        state.update_progress(phase, message, outputs)
 
 
 def _safe_error(error: Exception) -> str:
@@ -324,6 +372,22 @@ def _environment_file(config: Path | None) -> Path:
     if not resolved.is_file():
         raise OSError(f"configuration path is not a file: {resolved}")
     return resolved
+
+
+def _default_setup_output() -> Path:
+    """Use the working folder for CLI installs and the user config folder for desktop builds."""
+
+    if not bool(getattr(sys, "frozen", False)):
+        return Path.cwd() / "paircue.env"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "PairCue" / "paircue.env"
+    if sys.platform == "win32":
+        app_data = os.environ.get("APPDATA")
+        root = Path(app_data) if app_data else Path.home() / "AppData" / "Roaming"
+        return root / "PairCue" / "paircue.env"
+    config_home = os.environ.get("XDG_CONFIG_HOME")
+    root = Path(config_home) if config_home else Path.home() / ".config"
+    return root / "paircue" / "paircue.env"
 
 
 def _load_settings(environment_file: Path, **overrides: object) -> PairCueSettings:
@@ -356,6 +420,7 @@ def _choose_media_path() -> Path | None:
                     "Add-Type -AssemblyName System.Windows.Forms; "
                     "$d=New-Object System.Windows.Forms.OpenFileDialog; "
                     "$d.Title='Choose one movie or episode for PairCue'; "
+                    "$d.Filter='Video files|*.mkv;*.mp4;*.m4v;*.avi;*.mov;*.webm|All files|*.*'; "
                     "if($d.ShowDialog() -eq 'OK'){Write-Output $d.FileName}",
                 ]
             )
@@ -363,7 +428,25 @@ def _choose_media_path() -> Path | None:
         zenity = shutil.which("zenity")
         if zenity:
             commands.append(
-                [zenity, "--file-selection", "--title=Choose one movie or episode for PairCue"]
+                [
+                    zenity,
+                    "--file-selection",
+                    "--title=Choose one movie or episode for PairCue",
+                    "--file-filter=Video files | *.mkv *.mp4 *.m4v *.avi *.mov *.webm",
+                    "--file-filter=All files | *",
+                ]
+            )
+        kdialog = shutil.which("kdialog")
+        if not zenity and kdialog:
+            commands.append(
+                [
+                    kdialog,
+                    "--getopenfilename",
+                    "",
+                    "Video files (*.mkv *.mp4 *.m4v *.avi *.mov *.webm)",
+                    "--title",
+                    "Choose one movie or episode for PairCue",
+                ]
             )
 
     for command in commands:

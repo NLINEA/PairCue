@@ -13,6 +13,7 @@ downloads.env
 .coverage
 htmlcov/
 dist/
+release/
 build/
 *.egg-info/
 __pycache__/

@@ -44,6 +44,7 @@ def test_visual_setup_is_self_contained_and_only_calls_its_local_origin() -> Non
     assert "connect-src 'self'" in parser.csp
     assert not re.search(r"\b(XMLHttpRequest|WebSocket|sendBeacon)\b", javascript)
     assert 'fetch(`/config?token=' in javascript
+    assert 'fetch(`/progress?token=' in javascript
     assert not re.search(r"(?:src|href)=[\"']https?://", html)
 
 
@@ -59,3 +60,13 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert "docker compose --env-file paircue.env run --rm core paircue doctor" in javascript
     assert "paircue learn" in javascript
     assert "docker compose --env-file paircue.env" in javascript
+    assert "Your bilingual subtitle is ready" in javascript
+
+
+def test_visual_setup_asks_for_platform_before_starting_mode() -> None:
+    html = (_setup_root() / "index.html").read_text(encoding="utf-8")
+
+    assert html.index('aria-label="Media platform"') < html.index(
+        'aria-label="Starting point"'
+    )
+    assert html.index("Where do you watch?") < html.index("How do you want to begin?")

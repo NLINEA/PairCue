@@ -43,11 +43,35 @@
       </section>
 
       <form id="setup-form" novalidate>
-        <section class="step" aria-labelledby="library-heading">
+        <section class="step" aria-labelledby="platform-heading">
           <div class="step-number" aria-hidden="true">1</div>
           <div class="step-content">
-            <p class="step-kicker">START SMALL</p>
-            <h2 id="library-heading">What do you want to do first?</h2>
+            <p class="step-kicker">YOUR PLATFORM</p>
+            <h2 id="platform-heading">Where do you watch?</h2>
+            <div class="choice-grid" role="radiogroup" aria-label="Media platform">
+              <label class="choice-card">
+                <input type="radio" name="platform" value="plex" checked>
+                <span class="choice-title">Plex</span>
+                <span>Connect an existing Plex library</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="platform" value="jellyfin">
+                <span class="choice-title">Jellyfin</span>
+                <span>Use your Jellyfin API key</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="platform" value="emby">
+                <span class="choice-title">Emby</span>
+                <span>Use your Emby API key</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="platform" value="filesystem">
+                <span class="choice-title">Media folder</span>
+                <span>Use a NAS or local folder directly</span>
+              </label>
+            </div>
+
+            <p class="subsection-heading">How do you want to begin?</p>
             <div class="choice-grid" role="radiogroup" aria-label="Starting point">
               <label class="choice-card recommended-card">
                 <input type="radio" name="mode" value="single" checked>
@@ -70,30 +94,6 @@
             </div>
 
             <div id="library-options" class="library-options" hidden>
-              <p class="subsection-heading">Where do you watch?</p>
-              <div class="choice-grid" role="radiogroup" aria-label="Media platform">
-                <label class="choice-card">
-                  <input type="radio" name="platform" value="plex" checked>
-                  <span class="choice-title">Plex</span>
-                  <span>Connect an existing Plex library</span>
-                </label>
-                <label class="choice-card">
-                  <input type="radio" name="platform" value="jellyfin">
-                  <span class="choice-title">Jellyfin</span>
-                  <span>Use your Jellyfin API key</span>
-                </label>
-                <label class="choice-card">
-                  <input type="radio" name="platform" value="emby">
-                  <span class="choice-title">Emby</span>
-                  <span>Use your Emby API key</span>
-                </label>
-                <label class="choice-card">
-                  <input type="radio" name="platform" value="filesystem">
-                  <span class="choice-title">Media folder</span>
-                  <span>No media server required</span>
-                </label>
-              </div>
-
               <div class="field-grid inset-panel">
                 <label>
                   <span>Media folder on this machine or NAS</span>
@@ -339,7 +339,7 @@
           <div>
             <p class="step-kicker">READY</p>
             <h2 id="finish-heading">Save your PairCue setup</h2>
-            <p>PairCue saves it beside the folder where setup was started. Keep it private.</p>
+            <p>PairCue saves it privately on this device and shows the location after saving.</p>
           </div>
           <div class="button-row">
             <button id="copy-config" class="secondary-button" type="button">Copy config</button>
@@ -356,8 +356,8 @@
         </section>
       </form>
 
-      <section class="next-step" aria-labelledby="next-heading">
-        <span class="next-number">NEXT</span>
+      <section id="next-step" class="next-step" aria-labelledby="next-heading" aria-live="polite">
+        <span id="next-number" class="next-number">NEXT</span>
         <div>
           <h2 id="next-heading">Try one video</h2>
           <p id="next-copy">PairCue will guide you after the setup is saved.</p>
