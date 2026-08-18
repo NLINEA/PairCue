@@ -1,3 +1,4 @@
+from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,10 @@ def test_runtime_license_collector_includes_every_component_and_python(tmp_path:
 
 
 def test_build_tool_license_collector_includes_pyinstaller_copying(tmp_path: Path) -> None:
+    try:
+        distribution("pyinstaller")
+    except PackageNotFoundError:
+        pytest.skip("the optional desktop release dependencies are not installed")
     output = tmp_path / "build-tool-licenses"
 
     manifest = collect_named(output, ["pyinstaller", "pyinstaller-hooks-contrib"])

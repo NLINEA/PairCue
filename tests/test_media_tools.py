@@ -155,6 +155,7 @@ def test_sync_applies_only_the_confident_offset(
         return subprocess.CompletedProcess(arguments, 0, "", "")
 
     synchronizer = SubtitleSynchronizer(window_ms=100)
+    monkeypatch.setattr(media_tools, "_required_binary", lambda _: "ffmpeg")
     monkeypatch.setattr(media_tools.subprocess, "run", fake_run)
     monkeypatch.setattr(synchronizer, "_audio_activity", lambda _: audio_activity)
 
