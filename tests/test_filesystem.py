@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from subflow.services.filesystem import FilesystemSource
+from paircue.services.filesystem import FilesystemSource
 
 
 def test_filesystem_scans_video_files_and_infers_episode_context(tmp_path: Path) -> None:

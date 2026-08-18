@@ -7,14 +7,14 @@ from urllib.parse import urlparse
 from pydantic import Field, SecretStr, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from subflow.languages import canonicalize_language_tag, language_name
+from paircue.languages import canonicalize_language_tag, language_name
 
 
 def _secret_value(secret: SecretStr) -> str:
     return secret.get_secret_value()
 
 
-class SubFlowSettings(BaseSettings):
+class PairCueSettings(BaseSettings):
     """Settings for the subtitle service only.
 
     Download Station has a separate settings class so it never inherits media-server,
@@ -22,7 +22,7 @@ class SubFlowSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="SUBFLOW_",
+        env_prefix="PAIRCUE_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
@@ -110,24 +110,24 @@ class SubFlowSettings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def validate_secure_runtime(self) -> SubFlowSettings:
+    def validate_secure_runtime(self) -> PairCueSettings:
         token = _secret_value(self.api_token)
         exposed = self.api_host not in {"127.0.0.1", "::1", "localhost"}
         if (self.webhook_enabled or exposed) and len(token) < 32:
-            raise ValueError("SUBFLOW_API_TOKEN must contain at least 32 characters")
+            raise ValueError("PAIRCUE_API_TOKEN must contain at least 32 characters")
         if self.translation_enabled and not _secret_value(self.translation_api_key):
-            raise ValueError("translation is enabled but SUBFLOW_TRANSLATION_API_KEY is empty")
+            raise ValueError("translation is enabled but PAIRCUE_TRANSLATION_API_KEY is empty")
         if self.source_language.casefold() == self.target_language.casefold():
             raise ValueError("source and target languages must differ")
         if self.platform in {"jellyfin", "emby"}:
             if not self.server_url:
-                raise ValueError("SUBFLOW_SERVER_URL is required for Jellyfin and Emby")
+                raise ValueError("PAIRCUE_SERVER_URL is required for Jellyfin and Emby")
             if not _secret_value(self.server_token):
-                raise ValueError("SUBFLOW_SERVER_TOKEN is required for Jellyfin and Emby")
+                raise ValueError("PAIRCUE_SERVER_TOKEN is required for Jellyfin and Emby")
             if not self.server_user_id:
-                raise ValueError("SUBFLOW_SERVER_USER_ID is required for Jellyfin and Emby")
+                raise ValueError("PAIRCUE_SERVER_USER_ID is required for Jellyfin and Emby")
             if not self.server_path_prefix:
-                raise ValueError("SUBFLOW_SERVER_PATH_PREFIX is required for Jellyfin and Emby")
+                raise ValueError("PAIRCUE_SERVER_PATH_PREFIX is required for Jellyfin and Emby")
         return self
 
     @property
@@ -161,10 +161,10 @@ class SubFlowSettings(BaseSettings):
             if not extension.startswith("."):
                 extension = f".{extension}"
             if len(extension) > 9 or not extension[1:].isalnum():
-                raise ValueError("SUBFLOW_FILESYSTEM_EXTENSIONS contains an invalid extension")
+                raise ValueError("PAIRCUE_FILESYSTEM_EXTENSIONS contains an invalid extension")
             output.append(extension)
         if not output:
-            raise ValueError("SUBFLOW_FILESYSTEM_EXTENSIONS must not be empty")
+            raise ValueError("PAIRCUE_FILESYSTEM_EXTENSIONS must not be empty")
         return tuple(dict.fromkeys(output))
 
     @property
@@ -180,7 +180,7 @@ class DownloadStationSettings(BaseSettings):
     """Credentials and paths available only to the optional download service."""
 
     model_config = SettingsConfigDict(
-        env_prefix="SUBFLOW_DS_",
+        env_prefix="PAIRCUE_DS_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
@@ -202,7 +202,7 @@ class DownloadStationSettings(BaseSettings):
     def validate_url(cls, value: str) -> str:
         parsed = urlparse(value)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            raise ValueError("SUBFLOW_DS_URL must use http or https and include a host")
+            raise ValueError("PAIRCUE_DS_URL must use http or https and include a host")
         if parsed.username or parsed.password:
             raise ValueError("Download Station credentials must not be embedded in its URL")
         return value.rstrip("/")
@@ -210,7 +210,7 @@ class DownloadStationSettings(BaseSettings):
     @model_validator(mode="after")
     def validate_credentials(self) -> DownloadStationSettings:
         if len(_secret_value(self.api_token)) < 32:
-            raise ValueError("SUBFLOW_DS_API_TOKEN must contain at least 32 characters")
+            raise ValueError("PAIRCUE_DS_API_TOKEN must contain at least 32 characters")
         if not self.username or not _secret_value(self.password):
             raise ValueError("Download Station username and password are required")
         return self

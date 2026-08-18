@@ -2,8 +2,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from subflow.config import DownloadStationSettings
-from subflow.downloads_api import create_downloads_app
+from paircue.config import DownloadStationSettings
+from paircue.downloads_api import create_downloads_app
 
 TOKEN = "b" * 32
 

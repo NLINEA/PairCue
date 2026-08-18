@@ -12,14 +12,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import Response
 
-from subflow.config import DownloadStationSettings
-from subflow.security import (
+from paircue.config import DownloadStationSettings
+from paircue.security import (
     require_bounded_content_length,
     security_headers_middleware,
     token_dependency,
 )
-from subflow.services.atomic import atomic_write_bytes
-from subflow.services.download_station import DownloadStationClient, DownloadStationError
+from paircue.services.atomic import atomic_write_bytes
+from paircue.services.download_station import DownloadStationClient, DownloadStationError
 
 
 class MagnetRequest(BaseModel):
@@ -44,8 +44,8 @@ class TaskListResponse(BaseModel):
 
 DOWNLOADS_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>SubFlow Downloads</title><link rel="stylesheet" href="/assets/downloads.css"></head>
-<body><main><h1>SubFlow Downloads</h1>
+<title>PairCue Downloads</title><link rel="stylesheet" href="/assets/downloads.css"></head>
+<body><main><h1>PairCue Downloads</h1>
 <label>API token<input id="token" type="password" autocomplete="off"></label>
 <label>Magnet link<textarea id="magnet" rows="3"></textarea></label>
 <button id="add">Add magnet</button>
@@ -57,7 +57,7 @@ DOWNLOADS_HTML = """<!doctype html>
 DOWNLOADS_CSS = """body{font:16px system-ui;background:#f5f5f5;color:#1f2937;margin:0}main{max-width:620px;margin:3rem auto;background:white;padding:2rem;border-radius:16px}label{display:block;margin:1rem 0}.upload{margin-top:1.5rem}input,textarea,button{font:inherit}input,textarea{display:block;width:100%;margin-top:.4rem;padding:.7rem;box-sizing:border-box}button{padding:.65rem 1rem;margin:.25rem .35rem .25rem 0}li{padding:.45rem 0;border-bottom:1px solid #eee}#status{min-height:1.5rem}"""
 
 DOWNLOADS_JS = """const q=s=>document.querySelector(s);const auth=()=>({Authorization:`Bearer ${q('#token').value}`});
-q('#token').value=sessionStorage.getItem('subflow-token')||'';q('#token').addEventListener('change',()=>sessionStorage.setItem('subflow-token',q('#token').value));
+q('#token').value=sessionStorage.getItem('paircue-token')||'';q('#token').addEventListener('change',()=>sessionStorage.setItem('paircue-token',q('#token').value));
 async function decode(r){const d=await r.json();if(!r.ok)throw new Error(d.detail||'Request failed');return d}
 async function tasks(){try{const d=await decode(await fetch('/v1/tasks',{headers:auth()}));const list=q('#tasks');list.replaceChildren();d.tasks.forEach(t=>{const li=document.createElement('li');li.textContent=`${t.status}: ${t.title}`;list.append(li)})}catch(e){q('#status').textContent=e.message}}
 q('#refresh').addEventListener('click',tasks);q('#add').addEventListener('click',async()=>{try{const d=await decode(await fetch('/v1/magnets',{method:'POST',headers:{...auth(),'Content-Type':'application/json'},body:JSON.stringify({uri:q('#magnet').value})}));q('#status').textContent=d.message;tasks()}catch(e){q('#status').textContent=e.message}});
@@ -69,8 +69,8 @@ def create_downloads_app(
     client: DownloadStationClient,
 ) -> FastAPI:
     app = FastAPI(
-        title="SubFlow Download Station",
-        version="0.1.0b2",
+        title="PairCue Download Station",
+        version="0.1.0b3",
         debug=False,
         docs_url=None,
         redoc_url=None,
@@ -105,7 +105,7 @@ def create_downloads_app(
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "service": "subflow-downloads"}
+        return {"status": "ok", "service": "paircue-downloads"}
 
     require_token = token_dependency(settings.api_token.get_secret_value())
     router = APIRouter(prefix="/v1", dependencies=[Depends(require_token)])

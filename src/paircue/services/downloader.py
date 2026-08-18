@@ -7,8 +7,8 @@ from pathlib import Path
 from babelfish import Language
 from subliminal import download_best_subtitles, save_subtitles, scan_video
 
-from subflow.languages import observed_language_tag
-from subflow.services.atomic import atomic_write_bytes
+from paircue.languages import observed_language_tag
+from paircue.services.atomic import atomic_write_bytes
 
 log = logging.getLogger(__name__)
 

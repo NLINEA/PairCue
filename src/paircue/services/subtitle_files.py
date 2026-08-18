@@ -7,8 +7,8 @@ from pathlib import Path
 
 import srt
 
-from subflow.languages import language_matches
-from subflow.services.atomic import atomic_write_text
+from paircue.languages import language_matches
+from paircue.services.atomic import atomic_write_text
 
 
 class SubtitleLanguage(StrEnum):

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from subflow.api import create_core_app
-from subflow.config import SubFlowSettings
+from paircue.api import create_core_app
+from paircue.config import PairCueSettings
 
 TOKEN = "a" * 32
 
@@ -30,7 +30,7 @@ class DummyRuntime:
 
 
 def _client(runtime: DummyRuntime) -> TestClient:
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         api_token=TOKEN,
         webhook_enabled=True,
         trusted_hosts="testserver",
@@ -39,7 +39,7 @@ def _client(runtime: DummyRuntime) -> TestClient:
 
 
 def _jellyfin_client(runtime: DummyRuntime) -> TestClient:
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         platform="jellyfin",
         server_url="http://jellyfin:8096",
         server_token="server-token",

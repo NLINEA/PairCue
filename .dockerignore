@@ -2,6 +2,8 @@
 .github
 .venv
 .env
+paircue.env
+# Keep any pre-rename local credentials out of the image context.
 subflow.env
 downloads.env
 __pycache__

@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from subflow.config import SubFlowSettings
-from subflow.factory import build_media_source
-from subflow.services.filesystem import FilesystemSource
-from subflow.services.media_browser import EmbyClient, JellyfinClient
-from subflow.services.plex import PlexClient
+from paircue.config import PairCueSettings
+from paircue.factory import build_media_source
+from paircue.services.filesystem import FilesystemSource
+from paircue.services.media_browser import EmbyClient, JellyfinClient
+from paircue.services.plex import PlexClient
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,7 @@ def test_factory_selects_media_server_connector(
     platform: str,
     expected_type: type[JellyfinClient] | type[EmbyClient],
 ) -> None:
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         platform=platform,
         server_url="http://media-server:8096",
         server_token="s" * 16,
@@ -38,14 +38,14 @@ def test_factory_selects_media_server_connector(
 
 
 def test_factory_selects_filesystem_source(tmp_path: Path) -> None:
-    source = build_media_source(SubFlowSettings(platform="filesystem", media_root=tmp_path))
+    source = build_media_source(PairCueSettings(platform="filesystem", media_root=tmp_path))
 
     assert isinstance(source, FilesystemSource)
 
 
 def test_factory_keeps_legacy_plex_connector(tmp_path: Path) -> None:
     source = build_media_source(
-        SubFlowSettings(
+        PairCueSettings(
             plex_url="http://plex:32400",
             plex_token="p" * 16,
             plex_path_prefix="/media",

@@ -3,8 +3,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from subflow.services.media_browser import EmbyClient, JellyfinClient
-from subflow.services.media_source import MediaSourceError
+from paircue.services.media_browser import EmbyClient, JellyfinClient
+from paircue.services.media_source import MediaSourceError
 
 
 def test_jellyfin_scans_paginated_movies_and_episodes(tmp_path: Path) -> None:

@@ -1,15 +1,15 @@
-name: subflow
+name: paircue
 
 services:
   core:
     build: .
-    image: subflow:0.1.0-beta.2
+    image: paircue:0.1.0-beta.3
     restart: unless-stopped
-    env_file: subflow.env
+    env_file: paircue.env
     user: "${PUID:-10001}:${PGID:-10001}"
     volumes:
       - "${MEDIA_PATH:?Set MEDIA_PATH}:/media:rw"
-      - subflow-state:/state
+      - paircue-state:/state
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9292/health', timeout=3)"]
       interval: 30s
@@ -27,8 +27,8 @@ services:
   downloads:
     profiles: ["downloads"]
     build: .
-    image: subflow:0.1.0-beta.2
-    command: ["subflow", "downloads"]
+    image: paircue:0.1.0-beta.3
+    command: ["paircue", "downloads"]
     restart: unless-stopped
     env_file: downloads.env
     user: "${PUID:-10001}:${PGID:-10001}"
@@ -45,4 +45,4 @@ services:
       - ALL
 
 volumes:
-  subflow-state:
+  paircue-state:

@@ -1,12 +1,10 @@
-# SubFlow
+# PairCue
 
-**Automatically aligned bilingual subtitles for Plex, Jellyfin, Emby, and any media folder —
-learn English or another language while you watch.**
+**Two languages. One perfectly timed track.**
 
-SubFlow is a cross-platform bilingual subtitle engine. Choose a source language and a learning
-language; it finds or extracts the source subtitle, synchronizes it to the media, translates every
-cue with an OpenAI-compatible model, and writes standard single-language and bilingual SRT
-sidecars. English to Traditional Chinese is the default, but neither language is fixed.
+PairCue is a self-hosted bilingual subtitle engine that aligns, translates, and pairs subtitles
+into natural learning tracks for Plex, Jellyfin, Emby, and local media libraries. Choose any source
+and learning language; English to Traditional Chinese is only the default, not a limitation.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
@@ -19,16 +17,16 @@ sidecars. English to Traditional Chinese is the default, but neither language is
 With the default `zh-TW` setting, the last two files are `Movie.zh-TW.srt` and
 `Movie.zh-TW.cc.srt`.
 
-Translation is all-or-nothing: SubFlow does not publish bilingual output when even one cue is
+Translation is all-or-nothing: PairCue does not publish bilingual output when even one cue is
 missing. By default, the source sidecar is also rewritten atomically with non-dialogue cues removed;
-set `SUBFLOW_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
+set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
 ## Quick start
 
 1. Copy `.env.example` to `.env` and set the NAS mount paths and UID/GID.
-2. Copy `subflow.env.example` to `subflow.env` and choose a platform and translation settings.
+2. Copy `paircue.env.example` to `paircue.env` and choose a platform and translation settings.
 3. Build the image with `docker compose build core`.
-4. Generate the API token with `docker run --rm subflow:0.1.0-beta.2 subflow generate-token`.
+4. Generate the API token with `docker run --rm paircue:0.1.0-beta.3 paircue generate-token`.
 5. Start the subtitle service:
 
    ```bash
@@ -48,38 +46,38 @@ few media files.
 | Any NAS or local media folder | Recursive video-file scan | Polling |
 
 Kodi, Infuse, VLC, and other players can read the resulting standard SRT sidecars when they access
-the same media files. They do not need a separate SubFlow integration.
+the same media files. They do not need a separate PairCue integration.
 
-Select exactly one source in `subflow.env`.
+Select exactly one source in `paircue.env`.
 
 Plex:
 
 ```dotenv
-SUBFLOW_PLATFORM=plex
-SUBFLOW_SERVER_URL=http://plex:32400
-SUBFLOW_SERVER_TOKEN=your-plex-token
-SUBFLOW_SERVER_PATH_PREFIX=/volume1/Media
+PAIRCUE_PLATFORM=plex
+PAIRCUE_SERVER_URL=http://plex:32400
+PAIRCUE_SERVER_TOKEN=your-plex-token
+PAIRCUE_SERVER_PATH_PREFIX=/volume1/Media
 ```
 
-Jellyfin (use `SUBFLOW_PLATFORM=emby` and the Emby URL for Emby):
+Jellyfin (use `PAIRCUE_PLATFORM=emby` and the Emby URL for Emby):
 
 ```dotenv
-SUBFLOW_PLATFORM=jellyfin
-SUBFLOW_SERVER_URL=http://jellyfin:8096
-SUBFLOW_SERVER_TOKEN=your-api-key
-SUBFLOW_SERVER_USER_ID=your-user-id
-SUBFLOW_SERVER_PATH_PREFIX=/media
+PAIRCUE_PLATFORM=jellyfin
+PAIRCUE_SERVER_URL=http://jellyfin:8096
+PAIRCUE_SERVER_TOKEN=your-api-key
+PAIRCUE_SERVER_USER_ID=your-user-id
+PAIRCUE_SERVER_PATH_PREFIX=/media
 ```
 
 No media server:
 
 ```dotenv
-SUBFLOW_PLATFORM=filesystem
+PAIRCUE_PLATFORM=filesystem
 ```
 
-`SUBFLOW_SERVER_PATH_PREFIX` is the library path seen by Plex, Jellyfin, or Emby. `MEDIA_PATH` in
+`PAIRCUE_SERVER_PATH_PREFIX` is the library path seen by Plex, Jellyfin, or Emby. `MEDIA_PATH` in
 `.env.example` is the same library path on the Docker host; it is mounted as
-`SUBFLOW_MEDIA_ROOT=/media` inside SubFlow. Existing `SUBFLOW_PLEX_*` variables remain accepted for
+`PAIRCUE_MEDIA_ROOT=/media` inside PairCue. Existing `PAIRCUE_PLEX_*` variables remain accepted for
 backward compatibility.
 
 Polling needs no webhook setup. For faster Jellyfin or Emby events, send authenticated JSON to
@@ -90,7 +88,7 @@ Polling needs no webhook setup. For faster Jellyfin or Emby events, send authent
 ```
 
 The request must include `Content-Type: application/json` and
-`Authorization: Bearer <SUBFLOW_API_TOKEN>`. Jellyfin's official
+`Authorization: Bearer <PAIRCUE_API_TOKEN>`. Jellyfin's official
 [Webhook Plugin](https://jellyfin.org/docs/general/server/notifications/) supports custom generic
 templates; Emby documents its authenticated server API in the
 [Emby REST API guide](https://dev.emby.media/doc/restapi/).
@@ -98,8 +96,8 @@ templates; Emby documents its authenticated server API in the
 ## Translation providers
 
 The default example uses GLM through the z.ai OpenAI-compatible endpoint. Any compatible endpoint
-can be configured with `SUBFLOW_TRANSLATION_BASE_URL`, `SUBFLOW_TRANSLATION_API_KEY`, and
-`SUBFLOW_TRANSLATION_MODEL`. A second compatible provider can be configured as fallback.
+can be configured with `PAIRCUE_TRANSLATION_BASE_URL`, `PAIRCUE_TRANSLATION_API_KEY`, and
+`PAIRCUE_TRANSLATION_MODEL`. A second compatible provider can be configured as fallback.
 
 Subtitle text is sent to the configured translation provider. Users are responsible for reviewing
 that provider's privacy policy and terms.
@@ -107,12 +105,12 @@ that provider's privacy policy and terms.
 ## Language-learning pairs
 
 Set source and target [BCP-47 language tags](https://www.rfc-editor.org/info/bcp47) in
-`subflow.env`. For Japanese dialogue with English learning subtitles:
+`paircue.env`. For Japanese dialogue with English learning subtitles:
 
 ```dotenv
-SUBFLOW_SOURCE_LANGUAGE=ja
-SUBFLOW_TARGET_LANGUAGE=en
-SUBFLOW_BILINGUAL_ORDER=target-first
+PAIRCUE_SOURCE_LANGUAGE=ja
+PAIRCUE_TARGET_LANGUAGE=en
+PAIRCUE_BILINGUAL_ORDER=target-first
 ```
 
 Common examples include `zh-TW`, `zh-HK`, `zh-Hant`, `zh-CN`, `ja`, `ko`, `es`, `fr`, and
@@ -121,13 +119,13 @@ top; use `source-first` to reverse the two lines. For a language or regional sty
 direction, add:
 
 ```dotenv
-SUBFLOW_TARGET_LANGUAGE_NAME=Traditional Chinese (Hong Kong)
-SUBFLOW_TARGET_LANGUAGE_STYLE=natural Cantonese-influenced Hong Kong wording suitable for subtitles
+PAIRCUE_TARGET_LANGUAGE_NAME=Traditional Chinese (Hong Kong)
+PAIRCUE_TARGET_LANGUAGE_STYLE=natural Cantonese-influenced Hong Kong wording suitable for subtitles
 ```
 
 English can be either the source or target, so pairs such as `en → zh-HK`, `ja → en`, `ko → en`,
 and `es → fr` are supported. Source and target must differ. When AI translation is disabled,
-SubFlow asks subtitle providers for the configured target language; Chinese targets can also fall
+PairCue asks subtitle providers for the configured target language; Chinese targets can also fall
 back to safe OpenCC script conversion.
 
 | Learning goal | Source | Target | Bilingual result |
@@ -138,27 +136,27 @@ back to safe OpenCC script conversion.
 
 ## Merge two existing subtitle languages
 
-When both configured sidecars already exist, for example `Movie.ja.srt` and `Movie.en.srt`, SubFlow
+When both configured sidecars already exist, for example `Movie.ja.srt` and `Movie.en.srt`, PairCue
 synchronizes both tracks and creates `Movie.en.cc.srt` without calling the translation provider.
 It matches cues by time rather than subtitle number, so one Japanese cue can safely pair with two
 shorter English cues, or the reverse.
 
 The merger requires at least 70% timing coverage in both tracks by default. It will not publish a
-misaligned bilingual file when confidence is lower. If AI translation is enabled, SubFlow falls
+misaligned bilingual file when confidence is lower. If AI translation is enabled, PairCue falls
 back to translating the synchronized source track; otherwise it keeps the valid single-language
-file. Advanced thresholds can be adjusted in `subflow.env`:
+file. Advanced thresholds can be adjusted in `paircue.env`:
 
 ```dotenv
-SUBFLOW_BILINGUAL_MERGE_TOLERANCE_MS=350
-SUBFLOW_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
+PAIRCUE_BILINGUAL_MERGE_TOLERANCE_MS=350
+PAIRCUE_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
 ```
 
 ## Automatic synchronization
 
-With `SUBFLOW_SYNC_ENABLED=true` (the default), SubFlow runs ffsubsync against the media before
+With `PAIRCUE_SYNC_ENABLED=true` (the default), PairCue runs ffsubsync against the media before
 translation. The translated and bilingual cues inherit the synchronized source timings exactly.
 ffsubsync's low-confidence safeguard is enabled, and replacement is atomic; if synchronization
-cannot be confirmed, SubFlow keeps the original timing and continues translation.
+cannot be confirmed, PairCue keeps the original timing and continues translation.
 
 ## Optional Download Station UI
 
@@ -181,7 +179,7 @@ magnet or upload a small `.torrent` file.
 - Secrets are read from environment variables and are never accepted in URLs.
 - Privileged API routes require a bearer token of at least 32 characters.
 - Interactive API docs, CORS, proxy-header trust, and debug mode are disabled.
-- Paths returned by any media server must map below `SUBFLOW_MEDIA_ROOT`.
+- Paths returned by any media server must map below `PAIRCUE_MEDIA_ROOT`.
 - Subprocesses use argument arrays and never invoke a shell.
 - Subtitle and state writes are atomic; job execution is deduplicated and locked per media path.
 - Existing language tracks require confidence-scored timing coverage before bilingual publication.
@@ -207,7 +205,7 @@ The beta intentionally targets one media server or filesystem root and one worke
 follow-ups include a translation cache, per-library language-learning profiles, richer status
 reporting, and faster incremental scans.
 
-SubFlow is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
+PairCue is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
 subtitle providers, or translation model providers.
 
 ## License

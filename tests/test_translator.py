@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 import srt
 
-from subflow.services.translator import (
+from paircue.services.translator import (
     CompleteTranslator,
     OpenAICompatibleProvider,
     ProviderConfig,

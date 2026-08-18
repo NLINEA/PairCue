@@ -10,9 +10,9 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from subflow.config import SubFlowSettings
-from subflow.runtime import CoreRuntime
-from subflow.security import (
+from paircue.config import PairCueSettings
+from paircue.runtime import CoreRuntime
+from paircue.security import (
     require_bounded_content_length,
     security_headers_middleware,
     token_dependency,
@@ -51,7 +51,7 @@ class MediaBrowserWebhook(BaseModel):
     item_type: str = Field(alias="ItemType")
 
 
-def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
+def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         runtime.start()
@@ -62,8 +62,8 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
 
     docs_url = "/docs" if settings.api_docs_enabled else None
     app = FastAPI(
-        title="SubFlow API",
-        version="0.1.0b2",
+        title="PairCue API",
+        version="0.1.0b3",
         debug=False,
         docs_url=docs_url,
         redoc_url=None,
@@ -75,7 +75,7 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="subflow-core", platform=settings.platform)
+        return HealthResponse(status="ok", service="paircue-core", platform=settings.platform)
 
     require_token = token_dependency(settings.api_token.get_secret_value())
     protected = APIRouter(prefix="/v1", dependencies=[Depends(require_token)])

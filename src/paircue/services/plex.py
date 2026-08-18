@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from subflow.models import MediaItem, MediaType
-from subflow.services.media_source import MediaSourceError, remap_server_path
+from paircue.models import MediaItem, MediaType
+from paircue.services.media_source import MediaSourceError, remap_server_path
 
 
 class PlexError(MediaSourceError):
@@ -33,9 +33,9 @@ class PlexClient:
             base_url=f"{self.base_url}/",
             headers={
                 "X-Plex-Token": token,
-                "X-Plex-Client-Identifier": "subflow",
-                "X-Plex-Product": "SubFlow",
-                "X-Plex-Version": "0.1.0b2",
+                "X-Plex-Client-Identifier": "paircue",
+                "X-Plex-Product": "PairCue",
+                "X-Plex-Version": "0.1.0b3",
                 "X-Plex-Pms-Api-Version": "1.0.0",
                 "Accept": "application/json",
             },

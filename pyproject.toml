@@ -3,8 +3,8 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "subflow-plex"
-version = "0.1.0b2"
+name = "paircue"
+version = "0.1.0b3"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,10 +52,10 @@ dev = [
 ]
 
 [project.scripts]
-subflow = "subflow.cli:main"
+paircue = "paircue.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/subflow"]
+packages = ["src/paircue"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
@@ -70,13 +70,13 @@ select = ["E", "F", "I", "B", "S", "UP", "SIM"]
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/subflow/downloads_api.py" = ["E501"]
+"src/paircue/downloads_api.py" = ["E501"]
 "tests/*" = ["S104", "S106"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
-packages = ["subflow"]
+packages = ["paircue"]
 
 [[tool.mypy.overrides]]
 module = ["babelfish", "opencc", "srt", "subliminal", "subliminal.*"]

@@ -4,7 +4,7 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
-from subflow.models import MediaItem
+from paircue.models import MediaItem
 
 
 class MediaSourceError(RuntimeError):
@@ -44,7 +44,7 @@ def remap_server_path(
         )
         if not prefix_matches:
             raise MediaSourceError(
-                f"{platform} returned a path outside SUBFLOW_SERVER_PATH_PREFIX"
+                f"{platform} returned a path outside PAIRCUE_SERVER_PATH_PREFIX"
             )
         relative_parts = path_parts[len(prefix_parts) :]
     else:
@@ -52,7 +52,7 @@ def remap_server_path(
             relative_parts = path.relative_to(prefix).parts
         except ValueError as exc:
             raise MediaSourceError(
-                f"{platform} returned a path outside SUBFLOW_SERVER_PATH_PREFIX"
+                f"{platform} returned a path outside PAIRCUE_SERVER_PATH_PREFIX"
             ) from exc
     if ".." in relative_parts:
         raise MediaSourceError(f"{platform} returned a path containing parent traversal")

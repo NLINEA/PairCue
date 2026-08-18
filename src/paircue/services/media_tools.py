@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from subflow.languages import language_matches, observed_language_tag
+from paircue.languages import language_matches, observed_language_tag
 
 log = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ffmpeg tini \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 subflow \
-    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent subflow \
+    && groupadd --gid 10001 paircue \
+    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent paircue \
     && mkdir -p /media /state /torrents \
     && chown -R 10001:10001 /media /state /torrents
 
@@ -19,4 +19,4 @@ RUN python -m pip install --no-cache-dir '.[sync]'
 
 USER 10001:10001
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["subflow", "serve"]
+CMD ["paircue", "serve"]

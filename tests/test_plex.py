@@ -3,7 +3,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from subflow.services.plex import PlexClient, PlexError
+from paircue.services.plex import PlexClient, PlexError
 
 
 def test_plex_path_mapping_is_component_aware(tmp_path: Path) -> None:

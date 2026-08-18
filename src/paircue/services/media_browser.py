@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 import httpx
 
-from subflow.models import MediaItem, MediaType
-from subflow.services.media_source import MediaSource, MediaSourceError, remap_server_path
+from paircue.models import MediaItem, MediaType
+from paircue.services.media_source import MediaSource, MediaSourceError, remap_server_path
 
 MediaBrowserPlatform = Literal["jellyfin", "emby"]
 SAFE_ITEM_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
@@ -44,8 +44,8 @@ class MediaBrowserClient(MediaSource):
         self.server_path_prefix = server_path_prefix
         self.media_root = media_root
         authorization = (
-            'MediaBrowser Client="SubFlow", Device="Server", DeviceId="subflow", '
-            f'Version="0.1.0b2", Token="{token}"'
+            'MediaBrowser Client="PairCue", Device="Server", DeviceId="paircue", '
+            f'Version="0.1.0b3", Token="{token}"'
         )
         self._client = httpx.Client(
             base_url=f"{api_root}/",

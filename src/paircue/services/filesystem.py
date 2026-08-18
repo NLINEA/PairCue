@@ -4,7 +4,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from subflow.models import MediaItem, MediaType
+from paircue.models import MediaItem, MediaType
 
 EPISODE_PATTERN = re.compile(
     r"(?i)(?:^|[ ._-])(?:s(?P<season>\d{1,3})e|(?P<season_alt>\d{1,3})x)"

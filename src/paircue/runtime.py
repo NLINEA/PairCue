@@ -4,9 +4,9 @@ import logging
 import queue
 import threading
 
-from subflow.models import MediaItem
-from subflow.services.media_source import MediaSource
-from subflow.services.pipeline import SubtitlePipeline
+from paircue.models import MediaItem
+from paircue.services.media_source import MediaSource
+from paircue.services.pipeline import SubtitlePipeline
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class JobCoordinator:
     def start(self) -> None:
         if self._worker is not None:
             return
-        self._worker = threading.Thread(target=self._run, name="subflow-worker", daemon=True)
+        self._worker = threading.Thread(target=self._run, name="paircue-worker", daemon=True)
         self._worker.start()
 
     def submit(self, item: MediaItem) -> bool:
@@ -75,7 +75,7 @@ class CoreRuntime:
 
     def start(self) -> None:
         self.coordinator.start()
-        self._poller = threading.Thread(target=self._poll, name="subflow-poller", daemon=True)
+        self._poller = threading.Thread(target=self._poll, name="paircue-poller", daemon=True)
         self._poller.start()
 
     def stop(self) -> None:

@@ -6,16 +6,16 @@ import secrets
 
 import uvicorn
 
-from subflow.api import create_core_app
-from subflow.config import DownloadStationSettings, SubFlowSettings
-from subflow.downloads_api import create_downloads_app
-from subflow.factory import build_runtime
-from subflow.services.download_station import DownloadStationClient
+from paircue.api import create_core_app
+from paircue.config import DownloadStationSettings, PairCueSettings
+from paircue.downloads_api import create_downloads_app
+from paircue.factory import build_runtime
+from paircue.services.download_station import DownloadStationClient
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="subflow", description="cross-platform bilingual subtitle automation"
+        prog="paircue", description="cross-platform bilingual subtitle automation"
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("serve", help="run the subtitle service")
@@ -35,7 +35,7 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     if args.command == "serve":
-        settings = SubFlowSettings()
+        settings = PairCueSettings()
         runtime = build_runtime(settings)
         app = create_core_app(settings, runtime)
         uvicorn.run(

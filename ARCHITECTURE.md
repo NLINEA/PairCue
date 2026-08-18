@@ -1,6 +1,6 @@
-# SubFlow architecture
+# PairCue architecture
 
-SubFlow is a media-server companion service, not a replacement for Plex, Jellyfin, Emby, Bazarr,
+PairCue is a media-server companion service, not a replacement for Plex, Jellyfin, Emby, Bazarr,
 Sonarr, or Radarr.
 
 ## Requirements and assumptions
@@ -63,8 +63,8 @@ Station credentials. They use different bearer tokens and ports.
 - The first release uses one worker. This is intentionally slower than unrestricted parallelism but
   avoids duplicate translation costs and NAS I/O spikes.
 - SQLite is sufficient for one host and keeps installation simple. A distributed queue and database
-  should only be considered if SubFlow later supports multiple workers.
-- Polling is enabled by default on every connector. Webhooks are optional and must supply SubFlow's
+  should only be considered if PairCue later supports multiple workers.
+- Polling is enabled by default on every connector. Webhooks are optional and must supply PairCue's
   bearer token directly or through a trusted reverse proxy.
 - Download Station remains in the repository for convenience but runs as a separate process with a
   separate privilege boundary.

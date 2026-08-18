@@ -6,18 +6,18 @@ from pathlib import Path
 import srt
 from opencc import OpenCC
 
-from subflow.languages import opencc_profile
-from subflow.models import MediaItem, ProcessResult
-from subflow.services.downloader import SubliminalDownloader
-from subflow.services.glossary import GlossaryStore
-from subflow.services.locks import KeyedLockPool
-from subflow.services.media_tools import (
+from paircue.languages import opencc_profile
+from paircue.models import MediaItem, ProcessResult
+from paircue.services.downloader import SubliminalDownloader
+from paircue.services.glossary import GlossaryStore
+from paircue.services.locks import KeyedLockPool
+from paircue.services.media_tools import (
     EmbeddedSubtitleExtractor,
     SubtitleSynchronizer,
     ensure_media_path,
 )
-from subflow.services.state import StateStore, media_fingerprint
-from subflow.services.subtitle_files import (
+from paircue.services.state import StateStore, media_fingerprint
+from paircue.services.subtitle_files import (
     Sidecars,
     bilingual_subtitles,
     clean_spoken_dialogue,
@@ -29,7 +29,7 @@ from subflow.services.subtitle_files import (
     translated_subtitles,
     write_srt,
 )
-from subflow.services.translator import CompleteTranslator
+from paircue.services.translator import CompleteTranslator
 
 log = logging.getLogger(__name__)
 

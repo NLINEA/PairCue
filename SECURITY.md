@@ -12,5 +12,5 @@ suggested mitigation. Never include live media-server, NAS, or translation crede
 
 ## Deployment boundary
 
-SubFlow is designed for a trusted home network. Do not expose either service directly to the public
+PairCue is designed for a trusted home network. Do not expose either service directly to the public
 internet. Use a VPN or an authenticated reverse proxy and keep the bearer tokens separate.

@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from subflow.models import MediaItem
-from subflow.services.glossary import GlossaryStore
-from subflow.services.pipeline import SubtitlePipeline
-from subflow.services.state import StateStore
+from paircue.models import MediaItem
+from paircue.services.glossary import GlossaryStore
+from paircue.services.pipeline import SubtitlePipeline
+from paircue.services.state import StateStore
 
 
 class NoopExtractor:
@@ -74,7 +74,7 @@ def _pipeline(
 ) -> SubtitlePipeline:
     return SubtitlePipeline(
         media_root=tmp_path,
-        state=StateStore(tmp_path / "state" / "subflow.sqlite3"),
+        state=StateStore(tmp_path / "state" / "paircue.sqlite3"),
         downloader=downloader or NoopDownloader(),  # type: ignore[arg-type]
         extractor=NoopExtractor(),  # type: ignore[arg-type]
         synchronizer=synchronizer,  # type: ignore[arg-type]

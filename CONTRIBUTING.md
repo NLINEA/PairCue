@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve SubFlow.
+Thank you for helping improve PairCue.
 
 1. Open an issue before a large behavioral or architectural change.
 2. Add or update tests for bug fixes and features.

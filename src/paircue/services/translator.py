@@ -11,7 +11,7 @@ import httpx
 import srt
 from opencc import OpenCC
 
-from subflow.languages import language_name, opencc_profile
+from paircue.languages import language_name, opencc_profile
 
 log = logging.getLogger(__name__)
 CODE_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
@@ -86,7 +86,7 @@ class OpenAICompatibleProvider:
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "SubFlow/0.1",
+            "User-Agent": "PairCue/0.1",
         }
         last_error = "translation provider failed"
         for attempt in range(1, self.config.max_attempts + 1):

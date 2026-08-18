@@ -1,25 +1,25 @@
 from __future__ import annotations
 
-from subflow.config import SubFlowSettings
-from subflow.runtime import CoreRuntime, JobCoordinator
-from subflow.services.downloader import SubliminalDownloader
-from subflow.services.filesystem import FilesystemSource
-from subflow.services.glossary import GlossaryStore
-from subflow.services.media_browser import EmbyClient, JellyfinClient
-from subflow.services.media_source import MediaSource
-from subflow.services.media_tools import EmbeddedSubtitleExtractor, SubtitleSynchronizer
-from subflow.services.pipeline import SubtitlePipeline
-from subflow.services.plex import PlexClient
-from subflow.services.state import StateStore
-from subflow.services.translator import (
+from paircue.config import PairCueSettings
+from paircue.runtime import CoreRuntime, JobCoordinator
+from paircue.services.downloader import SubliminalDownloader
+from paircue.services.filesystem import FilesystemSource
+from paircue.services.glossary import GlossaryStore
+from paircue.services.media_browser import EmbyClient, JellyfinClient
+from paircue.services.media_source import MediaSource
+from paircue.services.media_tools import EmbeddedSubtitleExtractor, SubtitleSynchronizer
+from paircue.services.pipeline import SubtitlePipeline
+from paircue.services.plex import PlexClient
+from paircue.services.state import StateStore
+from paircue.services.translator import (
     CompleteTranslator,
     OpenAICompatibleProvider,
     ProviderConfig,
 )
 
 
-def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
-    state = StateStore(settings.state_dir / "subflow.sqlite3")
+def build_runtime(settings: PairCueSettings) -> CoreRuntime:
+    state = StateStore(settings.state_dir / "paircue.sqlite3")
     downloader = SubliminalDownloader(settings.provider_names, settings.state_dir / "tmp")
     glossary = GlossaryStore(settings.state_dir / "glossaries")
     synchronizer = SubtitleSynchronizer() if settings.sync_enabled else None
@@ -83,7 +83,7 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
     return CoreRuntime(media_source, coordinator, settings.scan_interval_seconds)
 
 
-def build_media_source(settings: SubFlowSettings) -> MediaSource:
+def build_media_source(settings: PairCueSettings) -> MediaSource:
     if settings.platform == "filesystem":
         return FilesystemSource(
             media_root=settings.media_root,

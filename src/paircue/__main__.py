@@ -1,4 +1,4 @@
-from subflow.cli import main
+from paircue.cli import main
 
 if __name__ == "__main__":
     main()

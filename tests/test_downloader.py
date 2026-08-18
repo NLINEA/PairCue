@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from subflow.services import downloader as downloader_module
-from subflow.services.downloader import SubliminalDownloader
+from paircue.services import downloader as downloader_module
+from paircue.services.downloader import SubliminalDownloader
 
 
 def test_downloader_preserves_the_requested_language_tag(

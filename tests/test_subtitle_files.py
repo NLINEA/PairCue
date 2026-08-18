@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import srt
 
-from subflow.services.subtitle_files import (
+from paircue.services.subtitle_files import (
     SubtitleLanguage,
     bilingual_subtitles,
     clean_spoken_dialogue,

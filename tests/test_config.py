@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from subflow.config import DownloadStationSettings, SubFlowSettings
+from paircue.config import DownloadStationSettings, PairCueSettings
 
 TOKEN = "a" * 32
 SERVER_TOKEN = "s" * 16
@@ -10,30 +10,30 @@ LEGACY_TOKEN = "l" * 16
 
 def test_exposed_core_requires_a_strong_token() -> None:
     with pytest.raises(ValidationError, match="at least 32"):
-        SubFlowSettings(api_host="0.0.0.0", api_token="short")
+        PairCueSettings(api_host="0.0.0.0", api_token="short")
 
 
 def test_translation_requires_a_key() -> None:
     with pytest.raises(ValidationError, match="TRANSLATION_API_KEY"):
-        SubFlowSettings(translation_enabled=True, translation_api_key="")
+        PairCueSettings(translation_enabled=True, translation_api_key="")
 
 
 def test_glm_thinking_is_disabled_by_default() -> None:
-    settings = SubFlowSettings()
+    settings = PairCueSettings()
 
     assert settings.translation_disable_thinking is True
     assert settings.fallback_disable_thinking is False
 
 
 def test_target_language_is_canonicalized_and_named() -> None:
-    settings = SubFlowSettings(target_language="ZH-hk")
+    settings = PairCueSettings(target_language="ZH-hk")
 
     assert settings.target_language == "zh-HK"
     assert settings.effective_target_language_name == "Traditional Chinese (Hong Kong)"
 
 
 def test_english_can_be_the_target_for_a_different_source_language() -> None:
-    settings = SubFlowSettings(source_language="JA", target_language="en")
+    settings = PairCueSettings(source_language="JA", target_language="en")
 
     assert settings.source_language == "ja"
     assert settings.effective_source_language_name == "Japanese"
@@ -42,7 +42,7 @@ def test_english_can_be_the_target_for_a_different_source_language() -> None:
 
 
 def test_custom_target_language_name_is_supported() -> None:
-    settings = SubFlowSettings(target_language="gd", target_language_name="Scottish Gaelic")
+    settings = PairCueSettings(target_language="gd", target_language_name="Scottish Gaelic")
 
     assert settings.effective_target_language_name == "Scottish Gaelic"
 
@@ -50,24 +50,24 @@ def test_custom_target_language_name_is_supported() -> None:
 @pytest.mark.parametrize("language", ["../../ja", "not_a_language"])
 def test_invalid_language_tag_is_rejected(language: str) -> None:
     with pytest.raises(ValidationError, match="valid BCP-47"):
-        SubFlowSettings(target_language=language)
+        PairCueSettings(target_language=language)
 
 
 def test_source_and_target_languages_must_differ() -> None:
     with pytest.raises(ValidationError, match="must differ"):
-        SubFlowSettings(source_language="en", target_language="EN")
+        PairCueSettings(source_language="en", target_language="EN")
 
 
 def test_empty_target_language_style_is_rejected() -> None:
     with pytest.raises(ValidationError, match="style must not be empty"):
-        SubFlowSettings(target_language_style="   ")
+        PairCueSettings(target_language_style="   ")
 
 
 def test_jellyfin_requires_generic_server_settings() -> None:
     with pytest.raises(ValidationError, match="SERVER_URL"):
-        SubFlowSettings(platform="jellyfin")
+        PairCueSettings(platform="jellyfin")
 
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         platform="jellyfin",
         server_url="http://jellyfin:8096",
         server_token=SERVER_TOKEN,
@@ -81,7 +81,7 @@ def test_jellyfin_requires_generic_server_settings() -> None:
 
 
 def test_filesystem_mode_parses_and_deduplicates_extensions() -> None:
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         platform="filesystem",
         filesystem_extensions="mkv, .MP4,mkv",
     )
@@ -90,7 +90,7 @@ def test_filesystem_mode_parses_and_deduplicates_extensions() -> None:
 
 
 def test_legacy_plex_settings_remain_supported() -> None:
-    settings = SubFlowSettings(
+    settings = PairCueSettings(
         plex_url="http://plex:32400",
         plex_token=LEGACY_TOKEN,
         plex_path_prefix="/volume1/Media",
