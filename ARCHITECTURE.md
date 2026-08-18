@@ -35,6 +35,9 @@ flowchart LR
     Setup["Private setup wizard"] --> Loopback["Token-protected loopback server"]
     Loopback --> Config["Atomic private paircue.env"]
     Loopback --> Progress["Filename-only first-run progress"]
+    Config --> Desktop["Desktop service lifecycle"]
+    Desktop --> Dashboard["Token-protected local dashboard"]
+    Dashboard --> Queue
 
     Browser["Optional browser UI"] --> DownloadAPI["Isolated Download Station app"]
     DownloadAPI --> Synology["Synology API / torrent watch folder"]
@@ -54,6 +57,12 @@ Desktop releases freeze the same independently written Python application and pa
 assets into a self-contained operating-system app. They store configuration in the user's native
 application-data folder, contain the runtime license bundle and SBOM, and deliberately exclude
 FFmpeg, provider models, subtitles, and media.
+
+When desktop library mode is selected, PairCue first makes a bounded authenticated platform check,
+then starts the same core runtime on `127.0.0.1`. The dashboard receives its bearer token in a URL
+fragment, removes that fragment from browser history before its first API request, keeps the token
+only in page memory, and returns filename-only results. Stopping or editing from the dashboard
+shuts the runtime down cleanly before the next action.
 
 ## Processing contract
 
@@ -93,5 +102,5 @@ FFmpeg, provider models, subtitles, and media.
 - Incremental connector cursors and event replay for very large libraries.
 - Translation cache keyed by source text, model, prompt version, and glossary version.
 - Per-library and per-series language-learning profiles.
-- Metrics, structured logs, and an operator dashboard.
+- Structured logs, optional external monitoring, and long-term activity history.
 - Multiple workers backed by a durable external queue.

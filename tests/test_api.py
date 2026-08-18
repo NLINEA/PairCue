@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi.testclient import TestClient
 
 from paircue.api import create_core_app
@@ -43,7 +45,17 @@ class DummyRuntime:
                     updated_at="2026-08-18T09:00:00+00:00",
                 ),
             ),
+            scan_status="ready",
+            scan_message="Latest scan queued 3 items.",
         )
+
+
+class DummyDesktopControl:
+    def __init__(self) -> None:
+        self.actions: list[str] = []
+
+    def request(self, action: Literal["stop", "edit"]) -> None:
+        self.actions.append(action)
 
 
 def _client(runtime: DummyRuntime) -> TestClient:
@@ -78,6 +90,20 @@ def test_health_is_public_but_scan_is_protected() -> None:
         assert response.json() == {"queued": True, "message": "queued 3 item(s)"}
 
 
+def test_local_dashboard_is_packaged_and_never_embeds_the_api_token() -> None:
+    runtime = DummyRuntime()
+    with _client(runtime) as client:
+        page = client.get("/")
+        javascript = client.get("/dashboard.js")
+
+    assert page.status_code == 200
+    assert "Your bilingual subtitle queue" in page.text
+    assert TOKEN not in page.text
+    assert javascript.status_code == 200
+    assert TOKEN not in javascript.text
+    assert "connect-src 'self'" in page.headers["content-security-policy"]
+
+
 def test_status_is_protected_and_hides_full_media_path() -> None:
     runtime = DummyRuntime()
     with _client(runtime) as client:
@@ -89,8 +115,38 @@ def test_status_is_protected_and_hides_full_media_path() -> None:
 
     assert response.status_code == 200
     assert response.json()["results"] == {"completed": 7, "failed": 1}
+    assert response.json()["scan_status"] == "ready"
     assert response.json()["recent"][0]["media_name"] == "Movie.mkv"
     assert "/media/" not in response.text
+
+
+def test_dashboard_context_and_desktop_controls_are_protected() -> None:
+    runtime = DummyRuntime()
+    control = DummyDesktopControl()
+    settings = PairCueSettings(
+        api_token=TOKEN,
+        trusted_hosts="testserver",
+        source_language="ja",
+        target_language="en",
+    )
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(
+        create_core_app(settings, runtime, desktop_control=control)  # type: ignore[arg-type]
+    ) as client:
+        assert client.get("/v1/dashboard-context").status_code == 401
+        context = client.get("/v1/dashboard-context", headers=headers)
+        stopped = client.post("/v1/desktop/stop", headers=headers)
+        edited = client.post("/v1/desktop/edit", headers=headers)
+
+    assert context.json() == {
+        "platform": "plex",
+        "source_language": "ja",
+        "target_language": "en",
+        "desktop": True,
+    }
+    assert stopped.json()["message"] == "PairCue is stopping"
+    assert edited.json()["message"] == "PairCue is reopening setup"
+    assert control.actions == ["stop", "edit"]
 
 
 def test_webhook_validates_payload_and_queues_rating_key() -> None:

@@ -149,3 +149,23 @@ def build_media_source(settings: PairCueSettings) -> MediaSource:
         media_root=settings.media_root,
     )
     return media_source
+
+
+def check_media_source_connection(settings: PairCueSettings) -> str:
+    """Make the smallest authenticated request that proves the selected source is reachable."""
+
+    source = build_media_source(settings)
+    try:
+        if isinstance(source, PlexClient):
+            libraries = source.libraries()
+            noun = "library" if len(libraries) == 1 else "libraries"
+            return f"Connected to Plex. Found {len(libraries)} {noun}."
+        if isinstance(source, (JellyfinClient, EmbyClient)):
+            user_name = source.user_name()
+            return f"Connected to {source.platform.title()} as {user_name}."
+        root = settings.media_root.resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError("the selected media location is not a folder")
+        return "Connected to the media folder."
+    finally:
+        source.close()

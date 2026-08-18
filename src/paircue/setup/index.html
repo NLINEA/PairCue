@@ -95,12 +95,15 @@
 
             <div id="library-options" class="library-options" hidden>
               <div class="field-grid inset-panel">
-                <label>
-                  <span>Media folder on this machine or NAS</span>
-                  <input id="host-media-path" type="text" value="/volume1/Media" autocomplete="off">
-                  <small>This folder will be mounted into PairCue.</small>
-                </label>
-                <label>
+                <div class="field-control">
+                  <label for="host-media-path">Media folder on this machine or NAS</label>
+                  <div class="path-row">
+                    <input id="host-media-path" type="text" value="/volume1/Media" autocomplete="off">
+                    <button id="choose-media-folder" type="button" hidden>Choose folder</button>
+                  </div>
+                  <small>PairCue needs read and write access. On a desktop, choose the mounted folder.</small>
+                </div>
+                <label id="local-port-field">
                   <span>Local status page port</span>
                   <input id="host-port" type="text" inputmode="numeric" value="9292" autocomplete="off">
                   <small>Only accessible from this device by default.</small>
@@ -110,8 +113,8 @@
               <div id="server-fields" class="field-grid inset-panel">
                 <label>
                   <span>Server address</span>
-                  <input id="server-url" type="url" value="http://plex:32400" autocomplete="off">
-                  <small>Address PairCue can reach from Docker.</small>
+                  <input id="server-url" type="url" value="http://127.0.0.1:32400" autocomplete="off">
+                  <small>Use the server's local network address. Do not paste a Plex web-app page.</small>
                 </label>
                 <label>
                   <span>Server token or API key</span>
@@ -128,9 +131,25 @@
                   <input id="server-prefix" type="text" value="/volume1/Media" autocomplete="off">
                   <small>Usually the same folder path as above.</small>
                 </label>
+                <details class="platform-help">
+                  <summary>Where do I find these details?</summary>
+                  <p id="plex-help">
+                    In Plex, use the server address ending in <code>:32400</code>. Find the token by
+                    opening an item in Plex Web, choosing <strong>Get Info → View XML</strong>, and
+                    copying the <code>X-Plex-Token</code> value from the URL.
+                  </p>
+                  <p id="jellyfin-help" hidden>
+                    In Jellyfin Dashboard, open <strong>Advanced → API Keys</strong> to create a key.
+                    Open your user in Dashboard and copy its ID from the browser address.
+                  </p>
+                  <p id="emby-help" hidden>
+                    In Emby Server Dashboard, open <strong>Advanced → API Keys</strong> to create a
+                    key. Open the selected user to find its user ID.
+                  </p>
+                </details>
               </div>
 
-              <details class="advanced">
+              <details id="nas-permissions" class="advanced">
                 <summary>NAS file permissions</summary>
                 <div class="field-grid details-grid">
                   <label>
@@ -362,6 +381,7 @@
           <h2 id="next-heading">Try one video</h2>
           <p id="next-copy">PairCue will guide you after the setup is saved.</p>
           <pre id="next-command" class="next-command"></pre>
+          <a id="next-link" class="dashboard-link" href="/" hidden>Open PairCue dashboard</a>
         </div>
       </section>
     </main>

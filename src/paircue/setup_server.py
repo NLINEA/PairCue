@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import json
 import logging
+import re
 import secrets
 import shutil
 import threading
@@ -40,6 +41,7 @@ class SetupState:
     phase: str = "setup"
     message: str = "Finish the setup in your browser."
     outputs: tuple[Path, ...] = ()
+    action_url: str = ""
     delivered: threading.Event = field(default_factory=threading.Event)
     _progress_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -48,11 +50,14 @@ class SetupState:
         phase: str,
         message: str,
         outputs: tuple[Path, ...] = (),
+        *,
+        action_url: str = "",
     ) -> None:
         with self._progress_lock:
             self.phase = phase
             self.message = message
             self.outputs = outputs
+            self.action_url = action_url
 
     def progress_payload(self) -> dict[str, object]:
         with self._progress_lock:
@@ -60,18 +65,34 @@ class SetupState:
                 "phase": self.phase,
                 "message": self.message,
                 "outputs": [path.name for path in self.outputs],
+                "action_url": self.action_url,
                 "terminal": self.phase in {"completed", "failed", "cancelled"},
             }
+
+
+class SetupConnectionError(ValueError):
+    """A secret-safe connection failure that may be shown in the setup page."""
 
 
 class SetupHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, assets_root: Path, output_path: Path) -> None:
+    def __init__(
+        self,
+        assets_root: Path,
+        output_path: Path,
+        *,
+        desktop: bool = False,
+        connection_test: Callable[[str], str] | None = None,
+        choose_folder: Callable[[], Path | None] | None = None,
+    ) -> None:
         super().__init__(("127.0.0.1", 0), SetupRequestHandler)
         self.assets_root = assets_root
         self.output_path = output_path
         self.token = secrets.token_urlsafe(32)
+        self.desktop = desktop
+        self.connection_test = connection_test
+        self.choose_folder = choose_folder
         self.state = SetupState(threading.Event())
         self.save_lock = threading.Lock()
 
@@ -111,6 +132,9 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if path == "/context":
+            self._json_response(HTTPStatus.OK, {"desktop": self.server.desktop})
+            return
         asset = ASSETS.get(path)
         if asset is None:
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -130,12 +154,32 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         supplied = parse_qs(parsed.query).get("token", [""])[0]
         if (
-            parsed.path != "/config"
+            parsed.path not in {"/config", "/test-platform", "/choose-folder"}
             or not self._trusted_host()
             or not hmac.compare_digest(supplied, self.server.token)
             or self.headers.get("Origin") != self.server.origin
         ):
             self.send_error(HTTPStatus.FORBIDDEN)
+            return
+        if parsed.path == "/choose-folder":
+            if self.server.choose_folder is None:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            try:
+                selected = self.server.choose_folder()
+            except OSError:
+                self._json_response(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"selected": False, "path": ""},
+                )
+                return
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "selected": selected is not None,
+                    "path": str(selected) if selected is not None else "",
+                },
+            )
             return
         if not self.headers.get("Content-Type", "").startswith("application/json"):
             self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
@@ -159,6 +203,13 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
             if len(encoded) > MAX_CONFIG_BYTES:
                 raise ValueError("configuration is too large")
             _validate_config(config, mode=mode)
+            if parsed.path == "/test-platform":
+                if mode != "library" or self.server.connection_test is None:
+                    self.send_error(HTTPStatus.NOT_FOUND)
+                    return
+                message = self.server.connection_test(config)
+                self._json_response(HTTPStatus.OK, {"ok": True, "message": message})
+                return
             with self.server.save_lock:
                 if self.server.state.saved.is_set():
                     self._json_response(
@@ -184,6 +235,12 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                     },
                 )
                 self.server.state.saved.set()
+        except SetupConnectionError as exc:
+            self._json_response(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "message": str(exc)},
+            )
+            return
         except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
             log.warning("visual setup could not save configuration (%s)", type(exc).__name__)
             self._json_response(
@@ -238,8 +295,18 @@ def run_setup_wizard(
     output_path: Path,
     *,
     on_single_saved: Callable[[SetupState], None] | None = None,
+    on_library_saved: Callable[[SetupState], None] | None = None,
+    desktop: bool = False,
+    connection_test: Callable[[str], str] | None = None,
+    choose_folder: Callable[[], Path | None] | None = None,
 ) -> SetupState:
-    server = SetupHTTPServer(assets_root, output_path)
+    server = SetupHTTPServer(
+        assets_root,
+        output_path,
+        desktop=desktop,
+        connection_test=connection_test,
+        choose_folder=choose_folder,
+    )
     thread = threading.Thread(target=server.serve_forever, name="paircue-setup", daemon=True)
     thread.start()
     url = f"{server.origin}/?token={server.token}"
@@ -251,18 +318,15 @@ def run_setup_wizard(
     try:
         while not server.state.saved.wait(0.25):
             continue
-        if (
-            server.state.output_path is not None
-            and server.state.mode == "single"
-            and on_single_saved is not None
-        ):
+        callback = on_single_saved if server.state.mode == "single" else on_library_saved
+        if server.state.output_path is not None and callback is not None:
             try:
-                on_single_saved(server.state)
+                callback(server.state)
             except Exception as exc:
-                log.error("guided first run failed (%s)", type(exc).__name__)
+                log.error("guided setup continuation failed (%s)", type(exc).__name__)
                 server.state.update_progress(
                     "failed",
-                    "PairCue could not finish this run. Reopen PairCue to try again.",
+                    "PairCue could not finish setup. Check the settings and try again.",
                 )
             if server.state.phase not in {"completed", "failed", "cancelled"}:
                 server.state.update_progress(
@@ -280,20 +344,31 @@ def run_setup_wizard(
 
 
 def _validate_config(config: str, *, mode: str) -> None:
+    raw_values = parse_config_values(config)
+    values: dict[str, str] = {}
+    for name, decoded in raw_values.items():
+        if name.startswith("PAIRCUE_"):
+            values[name.removeprefix("PAIRCUE_").casefold()] = decoded
+    if mode == "single":
+        # One-video learning deliberately bypasses the selected media server, while retaining the
+        # user's platform choice in the saved file for the next setup visit.
+        values["platform"] = "filesystem"
+    PairCueSettings.model_validate(values)
+
+
+def parse_config_values(config: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in config.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
         name, separator, raw = stripped.partition("=")
-        if not separator or not name.startswith("PAIRCUE_"):
+        name = name.strip()
+        if not separator or not name or not re.fullmatch(r"[A-Z][A-Z0-9_]*", name):
             continue
-        decoded = json.loads(raw) if raw.startswith('"') else raw
+        candidate = raw.strip()
+        decoded = json.loads(candidate) if candidate.startswith('"') else candidate
         if not isinstance(decoded, str):
             raise ValueError("configuration values must be strings")
-        values[name.removeprefix("PAIRCUE_").casefold()] = decoded
-    if mode == "single":
-        # One-video learning deliberately bypasses the selected media server, while retaining the
-        # user's platform choice in the saved file for the next setup visit.
-        values["platform"] = "filesystem"
-    PairCueSettings.model_validate(values)
+        values[name] = decoded
+    return values

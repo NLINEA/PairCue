@@ -58,6 +58,25 @@ def test_jellyfin_scans_paginated_movies_and_episodes(tmp_path: Path) -> None:
     assert items[1].context_label == "Learning Show S01E01"
 
 
+def test_media_browser_connection_check_uses_the_selected_user(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/Users/user-id"
+        return httpx.Response(200, json={"Id": "user-id", "Name": "Language Learner"})
+
+    client = JellyfinClient(
+        base_url="http://jellyfin:8096",
+        token="api-token",
+        user_id="user-id",
+        server_path_prefix="/srv/media",
+        media_root=tmp_path,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        assert client.user_name() == "Language Learner"
+    finally:
+        client.close()
+
+
 def test_emby_adds_the_official_api_prefix_and_maps_windows_paths(tmp_path: Path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/emby/Users/user/Items/item-1"

@@ -19,6 +19,8 @@ class RuntimeSnapshot:
     queued: int
     results: dict[str, int]
     recent: tuple[RecentMediaState, ...]
+    scan_status: str
+    scan_message: str
 
 
 class JobCoordinator:
@@ -87,6 +89,9 @@ class CoreRuntime:
         self.scan_interval_seconds = scan_interval_seconds
         self._stop = threading.Event()
         self._poller: threading.Thread | None = None
+        self._scan_lock = threading.Lock()
+        self._scan_status = "waiting"
+        self._scan_message = "Waiting for the first library scan."
 
     def start(self) -> None:
         self.coordinator.start()
@@ -103,17 +108,33 @@ class CoreRuntime:
 
     def status_snapshot(self, recent_limit: int = 20) -> RuntimeSnapshot:
         pending, queued = self.coordinator.counts()
+        with self._scan_lock:
+            scan_status = self._scan_status
+            scan_message = self._scan_message
         return RuntimeSnapshot(
             pending=pending,
             queued=queued,
             results=self.coordinator.pipeline.state.summary(),
             recent=self.coordinator.pipeline.state.recent(recent_limit),
+            scan_status=scan_status,
+            scan_message=scan_message,
         )
 
     def scan_now(self) -> int:
-        submitted = 0
-        for item in self.media_source.scan_items():
-            submitted += int(self.coordinator.submit(item))
+        self._set_scan_state("scanning", f"Checking the {self.media_source.platform} library…")
+        try:
+            submitted = 0
+            for item in self.media_source.scan_items():
+                submitted += int(self.coordinator.submit(item))
+        except Exception:
+            self._set_scan_state(
+                "error",
+                f"PairCue could not scan {self.media_source.platform.title()}. "
+                "Check the platform connection and media folder.",
+            )
+            raise
+        noun = "item" if submitted == 1 else "items"
+        self._set_scan_state("ready", f"Latest scan queued {submitted} {noun}.")
         return submitted
 
     def submit_item_id(self, item_id: str) -> bool:
@@ -132,3 +153,8 @@ class CoreRuntime:
             except Exception:
                 log.exception("%s scan failed", self.media_source.platform.title())
             self._stop.wait(self.scan_interval_seconds)
+
+    def _set_scan_state(self, status: str, message: str) -> None:
+        with self._scan_lock:
+            self._scan_status = status
+            self._scan_message = message

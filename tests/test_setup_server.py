@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 
 import paircue
-from paircue.setup_server import SetupHTTPServer
+from paircue.setup_server import SetupConnectionError, SetupHTTPServer, parse_config_values
 
 VALID_CONFIG = """PAIRCUE_PLATFORM="filesystem"
 PAIRCUE_SOURCE_LANGUAGE="en"
@@ -29,6 +29,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
         with httpx.Client(base_url=server.origin) as client:
             page = client.get("/")
             readiness = client.get("/readiness")
+            context = client.get("/context")
             forbidden = client.post(
                 "/config?token=wrong",
                 headers={"Origin": server.origin},
@@ -63,6 +64,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     assert page.headers["cache-control"] == "no-store"
     assert readiness.status_code == 200
     assert set(readiness.json()) == {"ready", "ffmpeg", "ffprobe"}
+    assert context.json() == {"desktop": False}
     assert forbidden.status_code == 403
     assert saved.status_code == 200
     assert saved.json()["saved"] is True
@@ -74,6 +76,7 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
         "phase": "completed",
         "message": "created bilingual subtitles",
         "outputs": ["Private Movie.ja.cc.srt"],
+        "action_url": "",
         "terminal": True,
     }
     assert str(tmp_path) not in completed_progress.text
@@ -86,6 +89,99 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     assert server.state.saved.is_set()
     assert server.state.delivered.is_set()
     assert server.state.mode == "single"
+
+
+def test_setup_server_reports_desktop_context_without_exposing_secrets(tmp_path: Path) -> None:
+    assets = Path(paircue.__file__).with_name("setup")
+    server = SetupHTTPServer(assets, tmp_path / "paircue.env", desktop=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(base_url=server.origin) as client:
+            response = client.get("/context")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert response.json() == {"desktop": True}
+    assert server.token not in response.text
+
+
+def test_desktop_platform_is_checked_before_configuration_is_saved(tmp_path: Path) -> None:
+    assets = Path(paircue.__file__).with_name("setup")
+    output = tmp_path / "paircue.env"
+    attempts = 0
+
+    def connection_test(config: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise SetupConnectionError("The server did not accept that token.")
+        assert parse_config_values(config)["PAIRCUE_PLATFORM"] == "filesystem"
+        return "Connected to the media folder."
+
+    server = SetupHTTPServer(
+        assets,
+        output,
+        desktop=True,
+        connection_test=connection_test,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    headers = {"Origin": server.origin}
+    try:
+        with httpx.Client(base_url=server.origin) as client:
+            rejected = client.post(
+                f"/test-platform?token={server.token}",
+                headers=headers,
+                json={"config": VALID_CONFIG, "mode": "library"},
+            )
+            accepted = client.post(
+                f"/test-platform?token={server.token}",
+                headers=headers,
+                json={"config": VALID_CONFIG, "mode": "library"},
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert rejected.status_code == 400
+    assert rejected.json() == {"ok": False, "message": "The server did not accept that token."}
+    assert not output.exists()
+    assert accepted.json() == {"ok": True, "message": "Connected to the media folder."}
+    assert not output.exists()
+
+
+def test_desktop_folder_chooser_requires_setup_origin_and_returns_selected_path(
+    tmp_path: Path,
+) -> None:
+    assets = Path(paircue.__file__).with_name("setup")
+    media = tmp_path / "Media"
+    media.mkdir()
+    server = SetupHTTPServer(
+        assets,
+        tmp_path / "paircue.env",
+        desktop=True,
+        choose_folder=lambda: media,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(base_url=server.origin) as client:
+            rejected = client.post(f"/choose-folder?token={server.token}")
+            selected = client.post(
+                f"/choose-folder?token={server.token}",
+                headers={"Origin": server.origin},
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert rejected.status_code == 403
+    assert selected.json() == {"selected": True, "path": str(media)}
 
 
 def test_setup_server_rejects_cross_origin_and_oversized_requests(tmp_path: Path) -> None:

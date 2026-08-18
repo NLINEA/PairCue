@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>PairCue — Library</title>
+    <link rel="stylesheet" href="/dashboard.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="PairCue home">
+          <span class="brand-mark" aria-hidden="true">P<span>C</span></span>
+          <span>PairCue</span>
+        </a>
+        <div id="running-state" class="running-state" data-state="waiting">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="running-label">Waiting to connect</span>
+        </div>
+      </header>
+
+      <section id="connect-panel" class="connect-panel" aria-labelledby="connect-heading">
+        <p class="eyebrow">PRIVATE LOCAL DASHBOARD</p>
+        <h1 id="connect-heading">Open your PairCue library</h1>
+        <p>Paste the private dashboard token from <code>paircue.env</code>. It stays in this tab.</p>
+        <form id="connect-form">
+          <label for="dashboard-token">Dashboard token</label>
+          <div class="token-row">
+            <input id="dashboard-token" type="password" autocomplete="off" required>
+            <button type="submit">Connect</button>
+          </div>
+          <p id="connect-error" class="form-error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <div id="dashboard" hidden>
+        <section class="hero" aria-labelledby="dashboard-heading">
+          <div>
+            <p id="platform-label" class="eyebrow">YOUR LIBRARY</p>
+            <h1 id="dashboard-heading">Your bilingual subtitle queue</h1>
+            <p id="pair-label" class="hero-copy">Loading your learning pair…</p>
+          </div>
+          <button id="scan-now" class="primary-action" type="button">Scan library now</button>
+        </section>
+
+        <section class="metrics" aria-label="Library status">
+          <article>
+            <span>Working</span>
+            <strong id="working-count">0</strong>
+          </article>
+          <article>
+            <span>Completed</span>
+            <strong id="completed-count">0</strong>
+          </article>
+          <article>
+            <span>Needs attention</span>
+            <strong id="failed-count">0</strong>
+          </article>
+        </section>
+
+        <div id="scan-alert" class="scan-alert" role="status" hidden></div>
+
+        <section class="activity" aria-labelledby="activity-heading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">RECENT ACTIVITY</p>
+              <h2 id="activity-heading">What PairCue has done</h2>
+            </div>
+            <p id="last-updated" aria-live="polite">Not updated yet</p>
+          </div>
+          <div id="empty-state" class="empty-state">
+            <span aria-hidden="true">CC</span>
+            <h3>No results yet</h3>
+            <p>PairCue scans when it starts. You can also scan now.</p>
+          </div>
+          <ol id="recent-list" class="recent-list" hidden></ol>
+        </section>
+
+        <footer class="controls">
+          <p>Only filenames are shown here. PairCue has no analytics or PairCue account.</p>
+          <div id="desktop-controls" class="control-buttons" hidden>
+            <button id="edit-settings" type="button">Edit settings</button>
+            <button id="stop-paircue" class="danger-button" type="button">Stop PairCue</button>
+          </div>
+        </footer>
+      </div>
+    </main>
+    <script src="/dashboard.js"></script>
+  </body>
+</html>

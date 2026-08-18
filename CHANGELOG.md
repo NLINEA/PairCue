@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0b8 - 2026-08-18
+
+- Add a self-contained local dashboard with live queue totals, recent filename-only results, and a
+  one-click library scan.
+- Make desktop library setup verify its selected media platform before automatically opening the
+  dashboard, with useful credential, network, folder, and permission failures shown in setup.
+- Add a native media-folder chooser and keep failed platform checks editable instead of saving a
+  configuration that cannot start.
+- Hide container-only port and permission fields from desktop users while retaining them for NAS
+  and home-server installs.
+- Keep desktop library automation running without Docker or terminal commands and reopen an
+  existing library directly on later app launches.
+- Add dashboard controls to stop PairCue cleanly or return to visual setup, completing the
+  returning-user loop.
+- Pass the private dashboard token in a URL fragment, remove it from browser history, and keep it
+  out of browser storage and static assets.
+- Add narrow-screen dashboard behavior and package-level UI security tests based on rendered
+  desktop and mobile QA.
+
 ## 0.1.0b7 - 2026-08-18
 
 - Make platform selection the first setup decision, before choosing a one-video trial or

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from paircue import diagnostics
+from paircue import cli, diagnostics
 from paircue.cli import _default_setup_output, main
 from paircue.config import PairCueSettings
 from paircue.models import MediaItem, ProcessResult
@@ -97,6 +97,36 @@ def test_desktop_build_uses_the_native_private_settings_folder(
     )
 
 
+def test_desktop_folder_picker_uses_the_available_native_dialog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = tmp_path / "Media"
+    observed: list[list[str]] = []
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    monkeypatch.setattr(
+        cli.shutil,
+        "which",
+        lambda name: "/usr/bin/zenity" if name == "zenity" else None,
+    )
+
+    def run_dialog(command: list[str], **kwargs: object) -> object:
+        observed.append(command)
+        return cli.subprocess.CompletedProcess(command, 0, stdout=f"{selected}\n", stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", run_dialog)
+
+    assert cli._choose_media_directory() == selected
+    assert observed == [
+        [
+            "/usr/bin/zenity",
+            "--file-selection",
+            "--directory",
+            "--title=Choose your media folder for PairCue",
+        ]
+    ]
+
+
 def test_bare_paircue_opens_setup_and_reports_saved_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -104,10 +134,14 @@ def test_bare_paircue_opens_setup_and_reports_saved_file(
 ) -> None:
     output = tmp_path / "paircue.env"
     state = SetupState(threading.Event(), output_path=output, mode="library")
+
+    def finish_setup(*args: object, **kwargs: object) -> SetupState:
+        return state
+
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         "paircue.cli.run_setup_wizard",
-        lambda assets, target, *, on_single_saved: state,
+        finish_setup,
     )
 
     result = main([])
@@ -140,8 +174,21 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
         picker_calls += 1
         return media
 
-    def finish_setup(assets: Path, target: Path, *, on_single_saved: object) -> SetupState:
+    def finish_setup(
+        assets: Path,
+        target: Path,
+        *,
+        on_single_saved: object,
+        on_library_saved: object,
+        desktop: bool,
+        connection_test: object,
+        choose_folder: object,
+    ) -> SetupState:
         assert callable(on_single_saved)
+        assert on_library_saved is None
+        assert desktop is False
+        assert connection_test is None
+        assert choose_folder is None
         on_single_saved(state)
         return state
 
@@ -164,6 +211,64 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
     captured = capsys.readouterr().out
     assert "Choose one video" in captured
     assert f"created: {output}" in captured
+
+
+def test_desktop_library_setup_starts_dashboard_before_leaving_the_wizard(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = tmp_path / "paircue.env"
+    config.write_text('MEDIA_PATH="/media"\n', encoding="utf-8")
+    state = SetupState(threading.Event(), output_path=config, mode="library")
+    settings = PairCueSettings(
+        platform="filesystem",
+        media_root=tmp_path,
+        state_dir=tmp_path / "state",
+        api_token="x" * 40,
+    )
+
+    class FakeDesktopService:
+        url = "http://127.0.0.1:9292/#token=private"
+
+        def __init__(self, observed: PairCueSettings) -> None:
+            assert observed is settings
+
+        def start(self) -> None:
+            return None
+
+        def wait(self) -> str:
+            return "stop"
+
+    def finish_setup(
+        assets: Path,
+        target: Path,
+        *,
+        on_single_saved: object,
+        on_library_saved: object,
+        desktop: bool,
+        connection_test: object,
+        choose_folder: object,
+    ) -> SetupState:
+        assert desktop is True
+        assert callable(on_library_saved)
+        assert callable(connection_test)
+        assert callable(choose_folder)
+        on_library_saved(state)
+        return state
+
+    monkeypatch.setattr("paircue.cli._is_frozen", lambda: True)
+    monkeypatch.setattr("paircue.cli.run_setup_wizard", finish_setup)
+    monkeypatch.setattr("paircue.cli._desktop_library_settings", lambda path: settings)
+    monkeypatch.setattr(
+        "paircue.cli.check_media_source_connection",
+        lambda observed: "Connected to the media folder.",
+    )
+    monkeypatch.setattr("paircue.cli.DesktopService", FakeDesktopService)
+
+    assert main([]) == 0
+    assert state.phase == "completed"
+    assert state.action_url == FakeDesktopService.url
+    assert "Connected to the media folder" in state.message
 
 
 def test_learn_command_runs_one_local_video_without_a_media_server(

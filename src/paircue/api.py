@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal, Protocol
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -43,6 +45,19 @@ class StatusResponse(BaseModel):
     queued: int
     results: dict[str, int]
     recent: list[RecentResultResponse]
+    scan_status: str
+    scan_message: str
+
+
+class DashboardContextResponse(BaseModel):
+    platform: str
+    source_language: str
+    target_language: str
+    desktop: bool
+
+
+class DesktopControl(Protocol):
+    def request(self, action: Literal["stop", "edit"]) -> None: ...
 
 
 class PlexMetadata(BaseModel):
@@ -66,7 +81,12 @@ class MediaBrowserWebhook(BaseModel):
     item_type: str = Field(alias="ItemType")
 
 
-def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
+def create_core_app(
+    settings: PairCueSettings,
+    runtime: CoreRuntime,
+    *,
+    desktop_control: DesktopControl | None = None,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         runtime.start()
@@ -87,6 +107,24 @@ def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.middleware("http")(security_headers_middleware)
+
+    dashboard_root = Path(__file__).with_name("dashboard")
+    dashboard_assets = {
+        "/": ("index.html", "text/html; charset=utf-8"),
+        "/dashboard.css": ("dashboard.css", "text/css; charset=utf-8"),
+        "/dashboard.js": ("dashboard.js", "text/javascript; charset=utf-8"),
+    }
+
+    async def dashboard_asset(request: Request) -> Response:
+        filename, media_type = dashboard_assets[request.url.path]
+        try:
+            content = (dashboard_root / filename).read_bytes()
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail="dashboard asset is unavailable") from exc
+        return Response(content=content, media_type=media_type)
+
+    for dashboard_path in dashboard_assets:
+        app.add_api_route(dashboard_path, dashboard_asset, methods=["GET"], include_in_schema=False)
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
@@ -111,7 +149,30 @@ def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
                 RecentResultResponse.model_validate(row, from_attributes=True)
                 for row in snapshot.recent
             ],
+            scan_status=snapshot.scan_status,
+            scan_message=snapshot.scan_message,
         )
+
+    @protected.get("/dashboard-context", response_model=DashboardContextResponse)
+    async def dashboard_context() -> DashboardContextResponse:
+        return DashboardContextResponse(
+            platform=settings.platform,
+            source_language=settings.source_language,
+            target_language=settings.target_language,
+            desktop=desktop_control is not None,
+        )
+
+    if desktop_control is not None:
+
+        @protected.post("/desktop/stop", response_model=QueuedResponse)
+        async def desktop_stop() -> QueuedResponse:
+            desktop_control.request("stop")
+            return QueuedResponse(queued=False, message="PairCue is stopping")
+
+        @protected.post("/desktop/edit", response_model=QueuedResponse)
+        async def desktop_edit() -> QueuedResponse:
+            desktop_control.request("edit")
+            return QueuedResponse(queued=False, message="PairCue is reopening setup")
 
     @protected.post("/webhooks/plex", response_model=QueuedResponse)
     async def plex_webhook(request: Request) -> QueuedResponse:

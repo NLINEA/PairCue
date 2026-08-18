@@ -61,6 +61,10 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert "paircue learn" in javascript
     assert "docker compose --env-file paircue.env" in javascript
     assert "Your bilingual subtitle is ready" in javascript
+    assert 'fetch("/context"' in javascript
+    assert 'fetch(`/test-platform?token=' in javascript
+    assert 'fetch(`/choose-folder?token=' in javascript
+    assert "No Docker or terminal command required." in javascript
 
 
 def test_visual_setup_asks_for_platform_before_starting_mode() -> None:

@@ -6,6 +6,10 @@ Turn a private movie library into a language-learning library. PairCue finds or 
 subtitles, aligns them to the media, translates them, and writes one reusable bilingual SRT for
 Plex, Jellyfin, Emby, Kodi, Infuse, VLC, or a plain media folder.
 
+Subtitle managers stop after finding one subtitle. Browser learning extensions stop at supported
+streaming sites. PairCue is the bridge: automatic language-learning tracks for media you already
+own, saved as ordinary files that remain usable in any player.
+
 `existing subtitle → official search → speech transcription → translation → bilingual SRT`
 
 Choose any source and learning language; English to Traditional Chinese is only the default, not a
@@ -82,9 +86,24 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
 ## Automate the library after one video works
 
-Run PairCue again, choose the platform first, then choose **Automate my library**. The saved
-`paircue.env` contains both Docker host settings and PairCue settings, so there is only one file to
-manage. Put it beside `docker-compose.yml`, then run:
+Run PairCue again, choose the platform first, then choose **Automate my library**. In the desktop
+app, press **Save and open dashboard**. PairCue verifies the platform connection before opening a
+private local control centre. It scans when it starts; **Scan library now** lets you check again at
+any time. The dashboard shows queue totals and recent filename-only results, and provides **Edit
+settings** and **Stop PairCue** controls. Reopening the app returns directly to that dashboard.
+
+Use **Choose folder** instead of typing the media location. PairCue tests the folder, server
+address, and credential before it saves, so a failed check can be corrected on the same page.
+
+The selected media folder must be accessible from the computer running PairCue, with read and write
+permission so the finished SRT can be saved beside each video. PairCue remains active while its
+desktop background process is running; use **Stop PairCue** before disconnecting a network drive.
+
+### Always-on NAS or home-server install
+
+For a service that stays active without a desktop login, the saved `paircue.env` contains both
+Docker host settings and PairCue settings, so there is only one file to manage. Put it beside
+`docker-compose.yml`, then run:
 
 ```bash
 docker compose --env-file paircue.env build core
@@ -97,6 +116,9 @@ copy of a few media files. This repository provides a Dockerfile for local build
 publish an official prebuilt container image.
 
 After startup, view queue and recent results through the protected status endpoint:
+
+Open `http://127.0.0.1:9292/` for the private visual dashboard and paste the API token from
+`paircue.env`, or use the JSON endpoint:
 
 ```bash
 curl -H "Authorization: Bearer <token from paircue.env>" http://127.0.0.1:9292/v1/status
@@ -332,11 +354,10 @@ listed in [CHANGELOG.md](CHANGELOG.md).
 ## Project status
 
 The beta intentionally targets one media server or filesystem root and one worker. Its product
-wedge is complete private-library automation: ordinary subtitle managers focus on acquiring a
-single subtitle, while browser learning extensions focus on Netflix or YouTube. PairCue produces a
-portable, synchronized bilingual learning file for media you already own. Planned follow-ups
-include a translation cache, per-library language-learning profiles, richer status reporting, and
-faster incremental scans.
+wedge is complete private-library automation: a visual, account-free route from the user's Plex,
+Jellyfin, Emby, or media folder to a portable synchronized bilingual learning file. Planned
+follow-ups include a translation cache, per-library language-learning profiles, and faster
+incremental scans.
 
 PairCue is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
 subtitle providers, or translation model providers. PairCue application logic is independently

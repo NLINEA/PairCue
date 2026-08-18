@@ -350,6 +350,40 @@ label > span {
   font-weight: 700;
 }
 
+.field-control > label {
+  display: block;
+  margin-bottom: 8px;
+  color: #dfe7e3;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.path-row {
+  display: flex;
+  gap: 9px;
+}
+
+.path-row input { min-width: 0; }
+
+.path-row button {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #4c645b;
+  border-radius: 10px;
+  background: #17221f;
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.platform-help {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.platform-help p { margin-bottom: 0; }
+
 input[type="text"],
 input[type="url"],
 input[type="password"],
@@ -671,6 +705,21 @@ summary {
   white-space: pre-wrap;
 }
 
+.dashboard-link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: var(--mint);
+  color: #10120d;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dashboard-link[hidden] {
+  display: none;
+}
+
 code {
   color: var(--mint);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -711,6 +760,10 @@ footer {
   .field-grid,
   .language-row {
     grid-template-columns: 1fr;
+  }
+
+  .path-row {
+    flex-direction: column;
   }
 
   .swap {

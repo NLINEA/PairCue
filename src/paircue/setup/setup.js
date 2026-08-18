@@ -6,6 +6,7 @@ const preview = byId("config-preview");
 const formError = byId("form-error");
 const actionStatus = byId("action-status");
 const apiToken = randomToken();
+let desktopApp = false;
 
 const secretIds = new Set([
   "server-token",
@@ -133,7 +134,9 @@ function updateMode() {
   const library = selectedMode() === "library";
   byId("library-options").hidden = !library;
   byId("single-note").hidden = library;
-  byId("download-config").textContent = library ? "Save paircue.env" : "Save and choose a video";
+  byId("download-config").textContent = library
+    ? (desktopApp ? "Save and open dashboard" : "Save paircue.env")
+    : "Save and choose a video";
   updatePlatform();
   updateNextStep();
 }
@@ -172,13 +175,24 @@ function updatePlatform() {
   byId("server-token").disabled = isFolder;
   byId("server-prefix").disabled = isFolder;
   byId("server-user-id").disabled = !needsUser;
+  ["plex", "jellyfin", "emby"].forEach((name) => {
+    byId(`${name}-help`).hidden = platform !== name;
+  });
   if (!isFolder) {
     const defaults = {
-      plex: "http://plex:32400",
-      jellyfin: "http://jellyfin:8096",
-      emby: "http://emby:8096",
+      plex: "http://127.0.0.1:32400",
+      jellyfin: "http://127.0.0.1:8096",
+      emby: "http://127.0.0.1:8096",
     };
-    byId("server-url").value = defaults[platform];
+    const knownDefaults = new Set([
+      "http://plex:32400",
+      "http://jellyfin:8096",
+      "http://emby:8096",
+      ...Object.values(defaults),
+    ]);
+    if (!value("server-url") || knownDefaults.has(value("server-url"))) {
+      byId("server-url").value = defaults[platform];
+    }
   }
 }
 
@@ -282,14 +296,22 @@ function updateNextStep() {
   const library = selectedMode() === "library";
   byId("next-step").removeAttribute("data-phase");
   byId("next-number").textContent = "NEXT";
+  byId("next-link").hidden = true;
   if (library) {
-    byId("next-heading").textContent = "Start the library service";
-    byId("next-copy").textContent = "Put paircue.env beside docker-compose.yml, then run:";
-    byId("next-command").textContent = [
-      "docker compose --env-file paircue.env build core",
-      "docker compose --env-file paircue.env run --rm core paircue doctor",
-      "docker compose --env-file paircue.env up -d core",
-    ].join("\n");
+    if (desktopApp) {
+      byId("next-heading").textContent = "Your dashboard opens next";
+      byId("next-copy").textContent =
+        "PairCue stays running on this device, scans the library, and shows every result visually.";
+      byId("next-command").textContent = "No Docker or terminal command required.";
+    } else {
+      byId("next-heading").textContent = "Start the library service";
+      byId("next-copy").textContent = "Put paircue.env beside docker-compose.yml, then run:";
+      byId("next-command").textContent = [
+        "docker compose --env-file paircue.env build core",
+        "docker compose --env-file paircue.env run --rm core paircue doctor",
+        "docker compose --env-file paircue.env up -d core",
+      ].join("\n");
+    }
     return;
   }
   byId("next-heading").textContent = "Try one video";
@@ -356,8 +378,22 @@ async function saveConfig() {
   }
   const button = byId("download-config");
   button.disabled = true;
-  button.textContent = "Saving…";
   try {
+    if (desktopApp && selectedMode() === "library") {
+      button.textContent = "Checking platform…";
+      actionStatus.textContent = `Connecting to ${selectedPlatform()}…`;
+      const testResponse = await fetch(`/test-platform?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config, mode: selectedMode() }),
+      });
+      const testPayload = await testResponse.json();
+      if (!testResponse.ok || !testPayload.ok) {
+        throw new Error(testPayload.message || "PairCue could not verify this platform.");
+      }
+      actionStatus.textContent = testPayload.message;
+    }
+    button.textContent = "Saving…";
     const response = await fetch(`/config?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -374,10 +410,15 @@ async function saveConfig() {
     if (selectedMode() === "single") {
       actionStatus.textContent = `Saved ${payload.filename}. Look for the video file window.`;
       pollProgress(token);
+    } else if (desktopApp) {
+      actionStatus.textContent = "Saved. PairCue is opening your private dashboard…";
+      pollProgress(token);
     }
   } catch (error) {
     button.disabled = false;
-    button.textContent = selectedMode() === "library" ? "Save paircue.env" : "Save and choose a video";
+    button.textContent = selectedMode() === "library"
+      ? (desktopApp ? "Save and open dashboard" : "Save paircue.env")
+      : "Save and choose a video";
     formError.textContent = `${error.message} You can still use “Copy config”.`;
     formError.hidden = false;
   }
@@ -389,8 +430,10 @@ function renderProgress(payload) {
   const heading = byId("next-heading");
   const copy = byId("next-copy");
   const output = byId("next-command");
+  const link = byId("next-link");
   panel.dataset.phase = payload.phase;
   output.textContent = Array.isArray(payload.outputs) ? payload.outputs.join("\n") : "";
+  link.hidden = true;
 
   if (payload.phase === "choosing") {
     number.textContent = "1";
@@ -398,7 +441,7 @@ function renderProgress(payload) {
     copy.textContent = payload.message;
     return;
   }
-  if (payload.phase === "processing" || payload.phase === "saved") {
+  if (payload.phase === "processing" || payload.phase === "starting" || payload.phase === "saved") {
     number.textContent = "•••";
     heading.textContent = "PairCue is working";
     copy.textContent = payload.message;
@@ -406,8 +449,16 @@ function renderProgress(payload) {
   }
   if (payload.phase === "completed") {
     number.textContent = "DONE";
-    heading.textContent = "Your bilingual subtitle is ready";
-    copy.textContent = `${payload.message} The finished file is highlighted in your file manager.`;
+    if (payload.action_url) {
+      heading.textContent = "Your PairCue dashboard is ready";
+      copy.textContent = payload.message;
+      link.href = payload.action_url;
+      link.hidden = false;
+      window.setTimeout(() => window.location.assign(payload.action_url), 900);
+    } else {
+      heading.textContent = "Your bilingual subtitle is ready";
+      copy.textContent = `${payload.message} The finished file is highlighted in your file manager.`;
+    }
     return;
   }
   if (payload.phase === "cancelled") {
@@ -474,6 +525,53 @@ async function updateSystemReadiness() {
   }
 }
 
+async function updateAppContext() {
+  if (!window.location.protocol.startsWith("http")) {
+    return;
+  }
+  try {
+    const response = await fetch("/context", { headers: { Accept: "application/json" } });
+    const payload = await response.json();
+    desktopApp = response.ok && payload.desktop === true;
+    byId("choose-media-folder").hidden = !desktopApp;
+    byId("local-port-field").hidden = desktopApp;
+    byId("nas-permissions").hidden = desktopApp;
+    updateMode();
+    updatePreview();
+  } catch {
+    desktopApp = false;
+  }
+}
+
+async function chooseMediaFolder() {
+  const token = new URLSearchParams(window.location.search).get("token");
+  if (!desktopApp || !token) {
+    return;
+  }
+  const button = byId("choose-media-folder");
+  button.disabled = true;
+  button.textContent = "Choosing…";
+  try {
+    const response = await fetch(`/choose-folder?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error("PairCue could not open the folder chooser.");
+    }
+    if (payload.selected && payload.path) {
+      byId("host-media-path").value = payload.path;
+      byId("host-media-path").dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  } catch (error) {
+    formError.textContent = error.message;
+    formError.hidden = false;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Choose folder";
+  }
+}
+
 form.addEventListener("input", () => {
   clearValidity();
   updatePreview();
@@ -522,6 +620,7 @@ byId("swap-languages").addEventListener("click", () => {
 
 byId("copy-config").addEventListener("click", copyConfig);
 byId("download-config").addEventListener("click", saveConfig);
+byId("choose-media-folder").addEventListener("click", chooseMediaFolder);
 
 secretIds.forEach((id) => {
   byId(id).addEventListener("paste", () => {
@@ -532,3 +631,4 @@ secretIds.forEach((id) => {
 updateMode();
 updatePreview();
 updateSystemReadiness();
+updateAppContext();

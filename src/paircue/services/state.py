@@ -82,15 +82,21 @@ class StateStore:
                 """,
                 (bounded_limit,),
             ).fetchall()
-        return tuple(
-            RecentMediaState(
-                media_name=Path(str(media_path)).name,
-                status=str(status),
-                message=str(message).replace(str(media_path), Path(str(media_path)).name),
-                updated_at=str(updated_at),
+        recent: list[RecentMediaState] = []
+        for media_path, status, message, updated_at in rows:
+            path = Path(str(media_path))
+            safe_message = str(message).replace(str(path), path.name)
+            for separator in ("/", "\\"):
+                safe_message = safe_message.replace(f"{path.parent}{separator}", "")
+            recent.append(
+                RecentMediaState(
+                    media_name=path.name,
+                    status=str(status),
+                    message=safe_message,
+                    updated_at=str(updated_at),
+                )
             )
-            for media_path, status, message, updated_at in rows
-        )
+        return tuple(recent)
 
 
 def media_fingerprint(path: Path) -> str:

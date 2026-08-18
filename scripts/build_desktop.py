@@ -106,6 +106,15 @@ def main() -> int:
     _run([str(executable), "setup", "--no-open"], root)
     if executable.stat().st_size < 1_000_000:
         raise RuntimeError("desktop executable is unexpectedly small")
+    if payload.is_dir():
+        required_assets = (
+            "paircue/setup/index.html",
+            "paircue/dashboard/index.html",
+        )
+        packaged_paths = {path.as_posix() for path in payload.rglob("*") if path.is_file()}
+        for asset in required_assets:
+            if not any(path.endswith(asset) for path in packaged_paths):
+                raise RuntimeError(f"desktop app is missing packaged asset: {asset}")
 
     destination = stage / payload.name
     if payload.is_dir():

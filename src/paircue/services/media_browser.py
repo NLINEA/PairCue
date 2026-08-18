@@ -72,6 +72,12 @@ class MediaBrowserClient(MediaSource):
     def scan_items(self) -> list[MediaItem]:
         return self._paginated_items()
 
+    def user_name(self) -> str:
+        data = self._get(f"/Users/{self.user_id}")
+        if not isinstance(data, dict):
+            raise MediaBrowserError(f"{self.platform} returned an unexpected user response")
+        return str(data.get("Name") or self.user_id)
+
     def _paginated_items(self, *, page_size: int = 200) -> list[MediaItem]:
         output: list[MediaItem] = []
         offset = 0

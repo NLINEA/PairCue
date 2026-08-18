@@ -9,22 +9,30 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
+import httpx
 import uvicorn
 from pydantic import ValidationError
 
 from paircue.api import create_core_app
 from paircue.config import DownloadStationSettings, PairCueSettings
+from paircue.desktop_service import DesktopService, DesktopServiceError
 from paircue.diagnostics import run_diagnostics
 from paircue.downloads_api import create_downloads_app
-from paircue.factory import build_pipeline, build_runtime
+from paircue.factory import build_pipeline, build_runtime, check_media_source_connection
 from paircue.models import MediaItem
 from paircue.services.download_station import DownloadStationClient
 from paircue.services.subtitle_files import merge_bilingual_subtitles, parse_srt, write_srt
-from paircue.setup_server import SetupState, run_setup_wizard
+from paircue.setup_server import (
+    SetupConnectionError,
+    SetupState,
+    parse_config_values,
+    run_setup_wizard,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -128,6 +136,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
+def desktop_main() -> int:
+    """Open an existing desktop library, or enter setup on the first launch."""
+
+    output = _default_setup_output()
+    try:
+        if output.is_file() and _config_value(output, "MEDIA_PATH"):
+            return _run_desktop_library(output, reopen_setup=True)
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+        # A damaged regular file can be replaced by setup. Unsafe files such as symlinks
+        # remain protected by the setup server's save checks.
+        return _setup(no_open=False)
+    return _setup(no_open=False)
+
+
 def _doctor(*, as_json: bool, config: Path | None = None) -> int:
     try:
         environment_file = _environment_file(config)
@@ -182,6 +204,7 @@ def _setup(*, no_open: bool) -> int:
         print(setup_page)
         return 0
     exit_code = 0
+    desktop_service: DesktopService | None = None
 
     def continue_with_one_video(state: SetupState) -> None:
         nonlocal exit_code
@@ -213,17 +236,101 @@ def _setup(*, no_open: bool) -> int:
             )
         )
 
+    def continue_with_library(state: SetupState) -> None:
+        nonlocal desktop_service, exit_code
+        if state.output_path is None:
+            return
+        state.update_progress("starting", "Checking the platform and starting your dashboard…")
+        try:
+            settings = _desktop_library_settings(state.output_path)
+            summary = check_media_source_connection(settings)
+            service = DesktopService(settings)
+            service.start()
+        except (OSError, ValidationError, ValueError, httpx.HTTPError, DesktopServiceError) as exc:
+            exit_code = 1
+            state.update_progress("failed", _desktop_start_message(exc))
+            return
+        desktop_service = service
+        state.update_progress(
+            "completed",
+            f"{summary} Opening the private dashboard now.",
+            action_url=service.url,
+        )
+
+    def test_library_connection(config: str) -> str:
+        try:
+            settings = _desktop_library_settings_from_values(
+                parse_config_values(config),
+                _default_setup_output().parent,
+            )
+            return check_media_source_connection(settings)
+        except (OSError, ValidationError, ValueError, httpx.HTTPError) as exc:
+            raise SetupConnectionError(_desktop_start_message(exc)) from None
+
     state = run_setup_wizard(
         setup_page.parent,
         _default_setup_output(),
         on_single_saved=continue_with_one_video,
+        on_library_saved=continue_with_library if _is_frozen() else None,
+        desktop=_is_frozen(),
+        connection_test=test_library_connection if _is_frozen() else None,
+        choose_folder=_choose_media_directory if _is_frozen() else None,
     )
     if state.output_path is None:
         return 1
     print(f"Saved private configuration: {state.output_path}")
     if state.backup_path is not None:
         print(f"Previous configuration backed up to: {state.backup_path}")
+    if state.mode == "library" and _is_frozen():
+        if desktop_service is None:
+            return exit_code or 1
+        try:
+            action = desktop_service.wait()
+        except DesktopServiceError as exc:
+            print(f"PairCue dashboard stopped: {_safe_error(exc)}", file=sys.stderr)
+            return 1
+        if action == "edit":
+            return _setup(no_open=False)
     return exit_code
+
+
+def _run_desktop_library(config: Path, *, reopen_setup: bool) -> int:
+    try:
+        settings = _desktop_library_settings(config)
+        check_media_source_connection(settings)
+        service = DesktopService(settings)
+        service.start()
+    except (OSError, ValidationError, ValueError, httpx.HTTPError, DesktopServiceError) as exc:
+        print(
+            f"PairCue could not start the library dashboard: {_desktop_start_message(exc)}",
+            file=sys.stderr,
+        )
+        return _setup(no_open=False) if reopen_setup else 1
+    webbrowser.open(service.url)
+    try:
+        action = service.wait()
+    except DesktopServiceError as exc:
+        print(f"PairCue dashboard stopped: {_safe_error(exc)}", file=sys.stderr)
+        return 1
+    if action == "edit" and reopen_setup:
+        return _setup(no_open=False)
+    return 0
+
+
+def _desktop_start_message(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        if error.response.status_code in {401, 403}:
+            return "The server did not accept that token or API key. Check it and try again."
+        return "The media server returned an error. Check its address and PairCue access."
+    if isinstance(error, (httpx.ConnectError, httpx.TimeoutException)):
+        return "PairCue could not reach the media server. Check the address and network."
+    if isinstance(error, FileNotFoundError):
+        return "PairCue could not find the selected media folder. Choose it again."
+    if isinstance(error, PermissionError):
+        return "PairCue does not have permission to read and write the selected media folder."
+    if isinstance(error, ValidationError):
+        return f"Check the required platform settings: {_safe_error(error)}"
+    return _safe_error(error)
 
 
 def _pair(args: argparse.Namespace) -> int:
@@ -377,7 +484,7 @@ def _environment_file(config: Path | None) -> Path:
 def _default_setup_output() -> Path:
     """Use the working folder for CLI installs and the user config folder for desktop builds."""
 
-    if not bool(getattr(sys, "frozen", False)):
+    if not _is_frozen():
         return Path.cwd() / "paircue.env"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "PairCue" / "paircue.env"
@@ -388,6 +495,52 @@ def _default_setup_output() -> Path:
     config_home = os.environ.get("XDG_CONFIG_HOME")
     root = Path(config_home) if config_home else Path.home() / ".config"
     return root / "paircue" / "paircue.env"
+
+
+def _is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
+
+def _config_value(config: Path, name: str) -> str:
+    return parse_config_values(_read_desktop_config(config)).get(name, "")
+
+
+def _read_desktop_config(config: Path) -> str:
+    if config.is_symlink() or not config.is_file() or config.stat().st_size > 1024 * 1024:
+        raise OSError("desktop configuration is not a safe regular file")
+    return config.read_text(encoding="utf-8")
+
+
+def _desktop_library_settings(config: Path) -> PairCueSettings:
+    values = parse_config_values(_read_desktop_config(config))
+    return _desktop_library_settings_from_values(values, config.parent)
+
+
+def _desktop_library_settings_from_values(
+    values: dict[str, str],
+    config_parent: Path,
+) -> PairCueSettings:
+    media_value = values.get("MEDIA_PATH", "")
+    if not media_value:
+        raise ValueError("choose the media folder before starting library automation")
+    media_root = Path(media_value).expanduser().resolve(strict=True)
+    if not media_root.is_dir():
+        raise ValueError("the selected media location is not a folder")
+    if not os.access(media_root, os.R_OK | os.W_OK):
+        raise ValueError("PairCue needs read and write access to the selected media folder")
+    settings_values: dict[str, object] = {
+        name.removeprefix("PAIRCUE_").casefold(): value
+        for name, value in values.items()
+        if name.startswith("PAIRCUE_")
+    }
+    settings_values.update(
+        media_root=media_root,
+        state_dir=config_parent / "state",
+        api_host="127.0.0.1",
+        api_docs_enabled=False,
+        trusted_hosts="localhost,127.0.0.1",
+    )
+    return PairCueSettings.model_validate(settings_values)
 
 
 def _load_settings(environment_file: Path, **overrides: object) -> PairCueSettings:
@@ -469,6 +622,61 @@ def _choose_media_path() -> Path | None:
         if selected:
             return Path(selected.strip("'\""))
     return None
+
+
+def _choose_media_directory() -> Path | None:
+    """Open the native folder chooser used by desktop library setup."""
+
+    command: list[str] | None = None
+    if sys.platform == "darwin" and Path("/usr/bin/osascript").is_file():
+        command = [
+            "/usr/bin/osascript",
+            "-e",
+            'POSIX path of (choose folder with prompt "Choose your media folder for PairCue")',
+        ]
+    elif os.name == "nt":
+        powershell = shutil.which("powershell") or shutil.which("pwsh")
+        if powershell:
+            command = [
+                powershell,
+                "-NoProfile",
+                "-Command",
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$d=New-Object System.Windows.Forms.FolderBrowserDialog; "
+                "$d.Description='Choose your media folder for PairCue'; "
+                "if($d.ShowDialog() -eq 'OK'){Write-Output $d.SelectedPath}",
+            ]
+    else:
+        zenity = shutil.which("zenity")
+        kdialog = shutil.which("kdialog")
+        if zenity:
+            command = [
+                zenity,
+                "--file-selection",
+                "--directory",
+                "--title=Choose your media folder for PairCue",
+            ]
+        elif kdialog:
+            command = [
+                kdialog,
+                "--getexistingdirectory",
+                "",
+                "--title",
+                "Choose your media folder for PairCue",
+            ]
+    if command is None:
+        return None
+    try:
+        result = subprocess.run(  # noqa: S603 - fixed platform chooser and argument array
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    selected = result.stdout.strip()
+    return Path(selected) if result.returncode == 0 and selected else None
 
 
 def _reveal_path(path: Path) -> None:

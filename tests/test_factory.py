@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from paircue.config import PairCueSettings
-from paircue.factory import build_media_source
+from paircue.factory import build_media_source, check_media_source_connection
 from paircue.services.filesystem import FilesystemSource
 from paircue.services.media_browser import EmbyClient, JellyfinClient
 from paircue.services.plex import PlexClient
@@ -41,6 +41,12 @@ def test_factory_selects_filesystem_source(tmp_path: Path) -> None:
     source = build_media_source(PairCueSettings(platform="filesystem", media_root=tmp_path))
 
     assert isinstance(source, FilesystemSource)
+
+
+def test_filesystem_connection_check_proves_the_selected_folder_exists(tmp_path: Path) -> None:
+    settings = PairCueSettings(platform="filesystem", media_root=tmp_path)
+
+    assert check_media_source_connection(settings) == "Connected to the media folder."
 
 
 def test_factory_keeps_legacy_plex_connector(tmp_path: Path) -> None:

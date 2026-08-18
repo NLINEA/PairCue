@@ -27,9 +27,12 @@ def ensure_standard_streams() -> None:
 
 def main() -> int:
     ensure_standard_streams()
+    from paircue.cli import desktop_main
     from paircue.cli import main as cli_main
 
-    return cli_main()
+    # Double-clicking the app has no arguments and should reopen the dashboard. Release
+    # checks and advanced users can still invoke the normal CLI through the same executable.
+    return cli_main() if len(sys.argv) > 1 else desktop_main()
 
 
 if __name__ == "__main__":
