@@ -1,6 +1,7 @@
 # SubFlow architecture
 
-SubFlow is a Plex companion service, not a replacement for Plex, Bazarr, Sonarr, or Radarr.
+SubFlow is a media-server companion service, not a replacement for Plex, Jellyfin, Emby, Bazarr,
+Sonarr, or Radarr.
 
 ## Requirements and assumptions
 
@@ -8,13 +9,17 @@ SubFlow is a Plex companion service, not a replacement for Plex, Bazarr, Sonarr,
 - A library can contain thousands of movies and episodes.
 - Translation is slower and more failure-prone than local file operations.
 - A partial subtitle is worse than no translated subtitle.
-- Download Station is useful, but it must not share Plex or media-library privileges.
+- Download Station is useful, but it must not share media-server or media-library privileges.
 
 ## Components
 
 ```mermaid
 flowchart LR
-    Plex["Plex poller / authenticated webhook"] --> Queue["Deduplicating job queue"]
+    Plex["Plex connector"] --> Source["Media source interface"]
+    Jellyfin["Jellyfin connector"] --> Source
+    Emby["Emby connector"] --> Source
+    Folder["Filesystem scanner"] --> Source
+    Source --> Queue["Deduplicating job queue"]
     Queue --> Lock["Per-media lock"]
     Lock --> Pipeline["Subtitle pipeline"]
     Pipeline --> Embedded["Embedded subtitle extractor"]
@@ -29,13 +34,14 @@ flowchart LR
     DownloadAPI --> Synology["Synology API / torrent watch folder"]
 ```
 
-The subtitle service mounts `/media` and receives the Plex and translation credentials. The
-Download Station service mounts only `/torrents` and receives only Download Station credentials.
-They use different bearer tokens and ports.
+The subtitle service mounts `/media` and receives only the selected media-server and translation
+credentials. The Download Station service mounts only `/torrents` and receives only Download
+Station credentials. They use different bearer tokens and ports.
 
 ## Processing contract
 
-1. Resolve the Plex path under the configured media root; reject paths outside it.
+1. Discover the item through the selected connector, map its path under the configured media root,
+   and reject paths outside it.
 2. Deduplicate the queue and take a lock for the media path.
 3. Extract text-based embedded subtitles matching the configured source or target language.
 4. When both language tracks exist, synchronize each against the media and merge by temporal
@@ -58,14 +64,14 @@ They use different bearer tokens and ports.
   avoids duplicate translation costs and NAS I/O spikes.
 - SQLite is sufficient for one host and keeps installation simple. A distributed queue and database
   should only be considered if SubFlow later supports multiple workers.
-- Polling is enabled by default because native Plex webhooks cannot reliably attach a bearer header.
-  Webhooks are optional and intended to sit behind a trusted reverse proxy.
+- Polling is enabled by default on every connector. Webhooks are optional and must supply SubFlow's
+  bearer token directly or through a trusted reverse proxy.
 - Download Station remains in the repository for convenience but runs as a separate process with a
   separate privilege boundary.
 
 ## Revisit when the project grows
 
-- Incremental Plex pagination and event replay for very large libraries.
+- Incremental connector cursors and event replay for very large libraries.
 - Translation cache keyed by source text, model, prompt version, and glossary version.
 - Per-library and per-series language-learning profiles.
 - Metrics, structured logs, and an operator dashboard.

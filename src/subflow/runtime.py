@@ -5,8 +5,8 @@ import queue
 import threading
 
 from subflow.models import MediaItem
+from subflow.services.media_source import MediaSource
 from subflow.services.pipeline import SubtitlePipeline
-from subflow.services.plex import PlexClient
 
 log = logging.getLogger(__name__)
 
@@ -63,11 +63,11 @@ class JobCoordinator:
 class CoreRuntime:
     def __init__(
         self,
-        plex: PlexClient,
+        media_source: MediaSource,
         coordinator: JobCoordinator,
         scan_interval_seconds: int,
     ) -> None:
-        self.plex = plex
+        self.media_source = media_source
         self.coordinator = coordinator
         self.scan_interval_seconds = scan_interval_seconds
         self._stop = threading.Event()
@@ -83,23 +83,27 @@ class CoreRuntime:
         if self._poller is not None:
             self._poller.join(timeout=10)
         self.coordinator.stop()
-        self.plex.close()
+        self.media_source.close()
 
     def scan_now(self) -> int:
         submitted = 0
-        for item in self.plex.scan_items():
+        for item in self.media_source.scan_items():
             submitted += int(self.coordinator.submit(item))
         return submitted
 
-    def submit_rating_key(self, rating_key: str) -> bool:
-        item = self.plex.item_for_rating_key(rating_key)
+    def submit_item_id(self, item_id: str) -> bool:
+        item = self.media_source.item_for_id(item_id)
         return self.coordinator.submit(item) if item is not None else False
+
+    def submit_rating_key(self, rating_key: str) -> bool:
+        """Backward-compatible name used by the Plex webhook API."""
+        return self.submit_item_id(rating_key)
 
     def _poll(self) -> None:
         while not self._stop.is_set():
             try:
                 count = self.scan_now()
-                log.info("Plex scan queued %s item(s)", count)
+                log.info("%s scan queued %s item(s)", self.media_source.platform.title(), count)
             except Exception:
-                log.exception("Plex scan failed")
+                log.exception("%s scan failed", self.media_source.platform.title())
             self._stop.wait(self.scan_interval_seconds)

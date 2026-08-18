@@ -17,7 +17,7 @@ def _secret_value(secret: SecretStr) -> str:
 class SubFlowSettings(BaseSettings):
     """Settings for the subtitle service only.
 
-    Download Station has a separate settings class so it never inherits Plex,
+    Download Station has a separate settings class so it never inherits media-server,
     translation, or media-library credentials.
     """
 
@@ -28,6 +28,14 @@ class SubFlowSettings(BaseSettings):
         extra="ignore",
     )
 
+    platform: Literal["plex", "jellyfin", "emby", "filesystem"] = "plex"
+    server_url: str = ""
+    server_token: SecretStr = SecretStr("")
+    server_user_id: str = ""
+    server_path_prefix: str = ""
+    filesystem_extensions: str = ".mkv,.mp4,.avi,.m4v,.mov,.ts,.webm"
+
+    # Deprecated Plex-specific aliases retained for existing installations.
     plex_url: str = "http://127.0.0.1:32400"
     plex_token: SecretStr = SecretStr("")
     plex_path_prefix: str = "/volume1/MediaForPlex"
@@ -74,7 +82,7 @@ class SubFlowSettings(BaseSettings):
     trusted_hosts: str = "localhost,127.0.0.1"
     max_webhook_bytes: int = Field(default=131072, ge=1024, le=1048576)
 
-    @field_validator("plex_url", "translation_base_url", "fallback_base_url")
+    @field_validator("server_url", "plex_url", "translation_base_url", "fallback_base_url")
     @classmethod
     def validate_service_urls(cls, value: str) -> str:
         if not value:
@@ -111,6 +119,15 @@ class SubFlowSettings(BaseSettings):
             raise ValueError("translation is enabled but SUBFLOW_TRANSLATION_API_KEY is empty")
         if self.source_language.casefold() == self.target_language.casefold():
             raise ValueError("source and target languages must differ")
+        if self.platform in {"jellyfin", "emby"}:
+            if not self.server_url:
+                raise ValueError("SUBFLOW_SERVER_URL is required for Jellyfin and Emby")
+            if not _secret_value(self.server_token):
+                raise ValueError("SUBFLOW_SERVER_TOKEN is required for Jellyfin and Emby")
+            if not self.server_user_id:
+                raise ValueError("SUBFLOW_SERVER_USER_ID is required for Jellyfin and Emby")
+            if not self.server_path_prefix:
+                raise ValueError("SUBFLOW_SERVER_PATH_PREFIX is required for Jellyfin and Emby")
         return self
 
     @property
@@ -121,6 +138,34 @@ class SubFlowSettings(BaseSettings):
     def allowed_hosts(self) -> list[str]:
         hosts = [host.strip() for host in self.trusted_hosts.split(",") if host.strip()]
         return hosts or ["localhost", "127.0.0.1"]
+
+    @property
+    def effective_server_url(self) -> str:
+        return self.server_url or self.plex_url
+
+    @property
+    def effective_server_token(self) -> str:
+        return _secret_value(self.server_token) or _secret_value(self.plex_token)
+
+    @property
+    def effective_server_path_prefix(self) -> str:
+        return self.server_path_prefix or self.plex_path_prefix
+
+    @property
+    def media_extensions(self) -> tuple[str, ...]:
+        output: list[str] = []
+        for raw in self.filesystem_extensions.split(","):
+            extension = raw.strip().casefold()
+            if not extension:
+                continue
+            if not extension.startswith("."):
+                extension = f".{extension}"
+            if len(extension) > 9 or not extension[1:].isalnum():
+                raise ValueError("SUBFLOW_FILESYSTEM_EXTENSIONS contains an invalid extension")
+            output.append(extension)
+        if not output:
+            raise ValueError("SUBFLOW_FILESYSTEM_EXTENSIONS must not be empty")
+        return tuple(dict.fromkeys(output))
 
     @property
     def effective_target_language_name(self) -> str:

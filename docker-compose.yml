@@ -3,7 +3,7 @@ name: subflow
 services:
   core:
     build: .
-    image: subflow:0.1.0-beta.1
+    image: subflow:0.1.0-beta.2
     restart: unless-stopped
     env_file: subflow.env
     user: "${PUID:-10001}:${PGID:-10001}"
@@ -27,7 +27,7 @@ services:
   downloads:
     profiles: ["downloads"]
     build: .
-    image: subflow:0.1.0-beta.1
+    image: subflow:0.1.0-beta.2
     command: ["subflow", "downloads"]
     restart: unless-stopped
     env_file: downloads.env

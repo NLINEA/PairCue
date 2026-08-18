@@ -14,7 +14,9 @@ from subflow.services.download_station import DownloadStationClient
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="subflow", description="Plex subtitle automation")
+    parser = argparse.ArgumentParser(
+        prog="subflow", description="cross-platform bilingual subtitle automation"
+    )
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("serve", help="run the subtitle service")
     subcommands.add_parser("downloads", help="run the isolated Download Station service")

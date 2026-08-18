@@ -4,6 +4,8 @@ from pydantic import ValidationError
 from subflow.config import DownloadStationSettings, SubFlowSettings
 
 TOKEN = "a" * 32
+SERVER_TOKEN = "s" * 16
+LEGACY_TOKEN = "l" * 16
 
 
 def test_exposed_core_requires_a_strong_token() -> None:
@@ -59,6 +61,44 @@ def test_source_and_target_languages_must_differ() -> None:
 def test_empty_target_language_style_is_rejected() -> None:
     with pytest.raises(ValidationError, match="style must not be empty"):
         SubFlowSettings(target_language_style="   ")
+
+
+def test_jellyfin_requires_generic_server_settings() -> None:
+    with pytest.raises(ValidationError, match="SERVER_URL"):
+        SubFlowSettings(platform="jellyfin")
+
+    settings = SubFlowSettings(
+        platform="jellyfin",
+        server_url="http://jellyfin:8096",
+        server_token=SERVER_TOKEN,
+        server_user_id="0123456789abcdef",
+        server_path_prefix="/media",
+    )
+
+    assert settings.effective_server_url == "http://jellyfin:8096"
+    assert settings.effective_server_token == SERVER_TOKEN
+    assert settings.effective_server_path_prefix == "/media"
+
+
+def test_filesystem_mode_parses_and_deduplicates_extensions() -> None:
+    settings = SubFlowSettings(
+        platform="filesystem",
+        filesystem_extensions="mkv, .MP4,mkv",
+    )
+
+    assert settings.media_extensions == (".mkv", ".mp4")
+
+
+def test_legacy_plex_settings_remain_supported() -> None:
+    settings = SubFlowSettings(
+        plex_url="http://plex:32400",
+        plex_token=LEGACY_TOKEN,
+        plex_path_prefix="/volume1/Media",
+    )
+
+    assert settings.effective_server_url == "http://plex:32400"
+    assert settings.effective_server_token == LEGACY_TOKEN
+    assert settings.effective_server_path_prefix == "/volume1/Media"
 
 
 def test_download_service_has_separate_required_credentials() -> None:

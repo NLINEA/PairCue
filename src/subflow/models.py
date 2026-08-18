@@ -9,7 +9,7 @@ MediaType = Literal["movie", "episode"]
 
 @dataclass(frozen=True, slots=True)
 class MediaItem:
-    rating_key: str
+    item_id: str
     media_type: MediaType
     path: Path
     title: str
@@ -29,6 +29,11 @@ class MediaItem:
     @property
     def queue_key(self) -> str:
         return str(self.path.resolve(strict=False))
+
+    @property
+    def rating_key(self) -> str:
+        """Backward-compatible Plex name for the platform-neutral item id."""
+        return self.item_id
 
 
 @dataclass(frozen=True, slots=True)

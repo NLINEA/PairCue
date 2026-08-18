@@ -1,12 +1,12 @@
 # SubFlow
 
-**Automatically aligned bilingual subtitles for Plex — learn English or another language while
-you watch.**
+**Automatically aligned bilingual subtitles for Plex, Jellyfin, Emby, and any media folder —
+learn English or another language while you watch.**
 
-SubFlow creates automatically aligned bilingual subtitles for Plex. Choose a source language and a
-learning language; SubFlow finds or extracts the source subtitle, synchronizes it to the media,
-translates every cue with an OpenAI-compatible model, and writes Plex-friendly single-language and
-bilingual sidecars. English to Traditional Chinese is the default, but neither language is fixed.
+SubFlow is a cross-platform bilingual subtitle engine. Choose a source language and a learning
+language; it finds or extracts the source subtitle, synchronizes it to the media, translates every
+cue with an OpenAI-compatible model, and writes standard single-language and bilingual SRT
+sidecars. English to Traditional Chinese is the default, but neither language is fixed.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
@@ -26,9 +26,9 @@ set `SUBFLOW_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 ## Quick start
 
 1. Copy `.env.example` to `.env` and set the NAS mount paths and UID/GID.
-2. Copy `subflow.env.example` to `subflow.env` and fill in Plex and translation settings.
+2. Copy `subflow.env.example` to `subflow.env` and choose a platform and translation settings.
 3. Build the image with `docker compose build core`.
-4. Generate the API token with `docker run --rm subflow:0.1.0-beta.1 subflow generate-token`.
+4. Generate the API token with `docker run --rm subflow:0.1.0-beta.2 subflow generate-token`.
 5. Start the subtitle service:
 
    ```bash
@@ -37,6 +37,63 @@ set `SUBFLOW_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
 Polling is the default, so no inbound port is required. Start with a test library or a copy of a
 few media files.
+
+## Supported platforms
+
+| Platform | Discovery | Event trigger |
+|---|---|---|
+| Plex | Authenticated library API | Polling or native webhook |
+| Jellyfin | Authenticated user-items API | Polling or Webhook Plugin `ItemAdded` event |
+| Emby | Authenticated user-items API | Polling or `ItemAdded` webhook |
+| Any NAS or local media folder | Recursive video-file scan | Polling |
+
+Kodi, Infuse, VLC, and other players can read the resulting standard SRT sidecars when they access
+the same media files. They do not need a separate SubFlow integration.
+
+Select exactly one source in `subflow.env`.
+
+Plex:
+
+```dotenv
+SUBFLOW_PLATFORM=plex
+SUBFLOW_SERVER_URL=http://plex:32400
+SUBFLOW_SERVER_TOKEN=your-plex-token
+SUBFLOW_SERVER_PATH_PREFIX=/volume1/Media
+```
+
+Jellyfin (use `SUBFLOW_PLATFORM=emby` and the Emby URL for Emby):
+
+```dotenv
+SUBFLOW_PLATFORM=jellyfin
+SUBFLOW_SERVER_URL=http://jellyfin:8096
+SUBFLOW_SERVER_TOKEN=your-api-key
+SUBFLOW_SERVER_USER_ID=your-user-id
+SUBFLOW_SERVER_PATH_PREFIX=/media
+```
+
+No media server:
+
+```dotenv
+SUBFLOW_PLATFORM=filesystem
+```
+
+`SUBFLOW_SERVER_PATH_PREFIX` is the library path seen by Plex, Jellyfin, or Emby. `MEDIA_PATH` in
+`.env.example` is the same library path on the Docker host; it is mounted as
+`SUBFLOW_MEDIA_ROOT=/media` inside SubFlow. Existing `SUBFLOW_PLEX_*` variables remain accepted for
+backward compatibility.
+
+Polling needs no webhook setup. For faster Jellyfin or Emby events, send authenticated JSON to
+`/v1/webhooks/jellyfin` or `/v1/webhooks/emby` with this contract:
+
+```json
+{"NotificationType":"ItemAdded","ItemId":"the-item-id","ItemType":"Movie"}
+```
+
+The request must include `Content-Type: application/json` and
+`Authorization: Bearer <SUBFLOW_API_TOKEN>`. Jellyfin's official
+[Webhook Plugin](https://jellyfin.org/docs/general/server/notifications/) supports custom generic
+templates; Emby documents its authenticated server API in the
+[Emby REST API guide](https://dev.emby.media/doc/restapi/).
 
 ## Translation providers
 
@@ -105,8 +162,8 @@ cannot be confirmed, SubFlow keeps the original timing and continues translation
 
 ## Optional Download Station UI
 
-Download Station is retained as an isolated optional service. It does not receive the Plex token,
-translation key, state volume, or media-library mount.
+Download Station is retained as an isolated optional service. It does not receive the media-server
+token, translation key, state volume, or media-library mount.
 
 Copy `downloads.env.example` to `downloads.env` and use a different generated API token before
 starting it.
@@ -124,7 +181,7 @@ magnet or upload a small `.torrent` file.
 - Secrets are read from environment variables and are never accepted in URLs.
 - Privileged API routes require a bearer token of at least 32 characters.
 - Interactive API docs, CORS, proxy-header trust, and debug mode are disabled.
-- Plex paths must resolve below `SUBFLOW_MEDIA_ROOT`.
+- Paths returned by any media server must map below `SUBFLOW_MEDIA_ROOT`.
 - Subprocesses use argument arrays and never invoke a shell.
 - Subtitle and state writes are atomic; job execution is deduplicated and locked per media path.
 - Existing language tracks require confidence-scored timing coverage before bilingual publication.
@@ -146,12 +203,12 @@ The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Project status
 
-The first beta intentionally targets one Plex server and one worker. Planned follow-ups include a
-translation cache, per-library language-learning profiles, richer status reporting, and faster
-incremental Plex scans.
+The beta intentionally targets one media server or filesystem root and one worker. Planned
+follow-ups include a translation cache, per-library language-learning profiles, richer status
+reporting, and faster incremental scans.
 
-SubFlow is an independent project and is not affiliated with Plex, Synology, subtitle providers, or
-translation model providers.
+SubFlow is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
+subtitle providers, or translation model providers.
 
 ## License
 

@@ -101,7 +101,7 @@ def find_language_sidecar(
     *,
     bilingual: bool = False,
 ) -> Path | None:
-    """Find a Plex sidecar matching a requested language tag or known alias."""
+    """Find an SRT sidecar matching a requested language tag or known alias."""
 
     prefix_length = len(media_path.stem) + 1
     for candidate in media_path.parent.glob(f"{media_path.stem}.*.srt"):

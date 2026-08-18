@@ -4,13 +4,22 @@ build-backend = "hatchling.build"
 
 [project]
 name = "subflow-plex"
-version = "0.1.0b1"
-description = "Automatically aligned bilingual subtitles for Plex and language learning"
+version = "0.1.0b2"
+description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Zackary" }]
-keywords = ["plex", "subtitles", "bilingual", "language-learning", "translation", "nas"]
+keywords = [
+  "plex",
+  "jellyfin",
+  "emby",
+  "subtitles",
+  "bilingual",
+  "language-learning",
+  "translation",
+  "nas",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: MIT License",

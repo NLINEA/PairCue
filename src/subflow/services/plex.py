@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 import httpx
 
 from subflow.models import MediaItem, MediaType
+from subflow.services.media_source import MediaSourceError, remap_server_path
 
 
-class PlexError(RuntimeError):
+class PlexError(MediaSourceError):
     pass
 
 
 class PlexClient:
+    platform = "plex"
+
     def __init__(
         self,
         *,
@@ -24,15 +27,15 @@ class PlexClient:
         if not token:
             raise ValueError("Plex token is required")
         self.base_url = base_url.rstrip("/")
-        self.plex_path_prefix = PurePosixPath(plex_path_prefix)
+        self.plex_path_prefix = plex_path_prefix
         self.media_root = media_root
         self._client = httpx.Client(
-            base_url=self.base_url,
+            base_url=f"{self.base_url}/",
             headers={
                 "X-Plex-Token": token,
                 "X-Plex-Client-Identifier": "subflow",
                 "X-Plex-Product": "SubFlow",
-                "X-Plex-Version": "0.1.0b1",
+                "X-Plex-Version": "0.1.0b2",
                 "X-Plex-Pms-Api-Version": "1.0.0",
                 "Accept": "application/json",
             },
@@ -44,7 +47,7 @@ class PlexClient:
         self._client.close()
 
     def _get(self, path: str) -> dict[str, Any]:
-        response = self._client.get(path)
+        response = self._client.get(path.lstrip("/"))
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, dict):
@@ -72,7 +75,7 @@ class PlexClient:
                     continue
                 if media_type == "episode":
                     item = MediaItem(
-                        rating_key=item.rating_key,
+                        item_id=item.item_id,
                         media_type=item.media_type,
                         path=item.path,
                         title=item.title,
@@ -97,7 +100,7 @@ class PlexClient:
         previous_page_ids: tuple[str, ...] | None = None
         while True:
             response = self._client.get(
-                path,
+                path.lstrip("/"),
                 params=params,
                 headers={
                     "X-Plex-Container-Start": str(offset),
@@ -143,7 +146,7 @@ class PlexClient:
         if item is None or media_type == "movie":
             return item
         return MediaItem(
-            rating_key=item.rating_key,
+            item_id=item.item_id,
             media_type=item.media_type,
             path=item.path,
             title=item.title,
@@ -153,6 +156,9 @@ class PlexClient:
             episode=item.episode,
             library_key=item.library_key,
         )
+
+    def item_for_id(self, item_id: str) -> MediaItem | None:
+        return self.item_for_rating_key(item_id)
 
     def _extract(
         self, metadata: dict[str, Any], media_type: MediaType, library_key: str
@@ -168,7 +174,7 @@ class PlexClient:
         if not server_path:
             return None
         return MediaItem(
-            rating_key=str(metadata.get("ratingKey") or ""),
+            item_id=str(metadata.get("ratingKey") or ""),
             media_type=media_type,
             path=self.remap_path(server_path),
             title=str(metadata.get("title") or "Unknown"),
@@ -181,9 +187,12 @@ class PlexClient:
         )
 
     def remap_path(self, server_path: str) -> Path:
-        path = PurePosixPath(server_path)
         try:
-            relative = path.relative_to(self.plex_path_prefix)
-        except ValueError as exc:
-            raise PlexError("Plex returned a path outside PLEX_PATH_PREFIX") from exc
-        return self.media_root.joinpath(*relative.parts)
+            return remap_server_path(
+                server_path,
+                server_path_prefix=self.plex_path_prefix,
+                media_root=self.media_root,
+                platform="Plex",
+            )
+        except MediaSourceError as exc:
+            raise PlexError(str(exc)) from exc

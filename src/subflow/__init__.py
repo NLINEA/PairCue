@@ -1,3 +1,3 @@
-"""SubFlow: automatically aligned bilingual subtitles for Plex."""
+"""SubFlow: aligned bilingual subtitles for Plex, Jellyfin, Emby, and media folders."""
 
-__version__ = "0.1.0b1"
+__version__ = "0.1.0b2"

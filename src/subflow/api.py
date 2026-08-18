@@ -22,6 +22,7 @@ from subflow.security import (
 class HealthResponse(BaseModel):
     status: str
     service: str
+    platform: str
 
 
 class QueuedResponse(BaseModel):
@@ -42,6 +43,14 @@ class PlexWebhook(BaseModel):
     metadata: PlexMetadata = Field(alias="Metadata")
 
 
+class MediaBrowserWebhook(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    notification_type: str = Field(alias="NotificationType")
+    item_id: str = Field(alias="ItemId", pattern=r"^[A-Za-z0-9_-]{1,128}$")
+    item_type: str = Field(alias="ItemType")
+
+
 def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -54,7 +63,7 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
     docs_url = "/docs" if settings.api_docs_enabled else None
     app = FastAPI(
         title="SubFlow API",
-        version="0.1.0b1",
+        version="0.1.0b2",
         debug=False,
         docs_url=docs_url,
         redoc_url=None,
@@ -66,7 +75,7 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="subflow-core")
+        return HealthResponse(status="ok", service="subflow-core", platform=settings.platform)
 
     require_token = token_dependency(settings.api_token.get_secret_value())
     protected = APIRouter(prefix="/v1", dependencies=[Depends(require_token)])
@@ -78,7 +87,7 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
 
     @protected.post("/webhooks/plex", response_model=QueuedResponse)
     async def plex_webhook(request: Request) -> QueuedResponse:
-        if not settings.webhook_enabled:
+        if not settings.webhook_enabled or settings.platform != "plex":
             raise HTTPException(status_code=404, detail="webhook is disabled")
         require_bounded_content_length(request, settings.max_webhook_bytes)
         content_type = request.headers.get("content-type", "").lower()
@@ -106,6 +115,37 @@ def create_core_app(settings: SubFlowSettings, runtime: CoreRuntime) -> FastAPI:
             return QueuedResponse(queued=False, message="event ignored")
         queued = await run_in_threadpool(runtime.submit_rating_key, webhook.metadata.rating_key)
         return QueuedResponse(queued=queued, message="item queued" if queued else "item not found")
+
+    async def media_browser_webhook(
+        request: Request, platform: str
+    ) -> QueuedResponse:
+        if not settings.webhook_enabled or settings.platform != platform:
+            raise HTTPException(status_code=404, detail="webhook is disabled")
+        require_bounded_content_length(request, settings.max_webhook_bytes)
+        if not request.headers.get("content-type", "").lower().startswith("application/json"):
+            raise HTTPException(status_code=415, detail="unsupported content type")
+        try:
+            payload = json.loads((await request.body()).decode("utf-8"))
+            webhook = MediaBrowserWebhook.model_validate(payload)
+        except (UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+            raise HTTPException(
+                status_code=400, detail=f"invalid {platform} webhook payload"
+            ) from exc
+        if (
+            webhook.notification_type.casefold() != "itemadded"
+            or webhook.item_type.casefold() not in {"movie", "episode"}
+        ):
+            return QueuedResponse(queued=False, message="event ignored")
+        queued = await run_in_threadpool(runtime.submit_item_id, webhook.item_id)
+        return QueuedResponse(queued=queued, message="item queued" if queued else "item not found")
+
+    @protected.post("/webhooks/jellyfin", response_model=QueuedResponse)
+    async def jellyfin_webhook(request: Request) -> QueuedResponse:
+        return await media_browser_webhook(request, "jellyfin")
+
+    @protected.post("/webhooks/emby", response_model=QueuedResponse)
+    async def emby_webhook(request: Request) -> QueuedResponse:
+        return await media_browser_webhook(request, "emby")
 
     app.include_router(protected)
     return app

@@ -3,7 +3,10 @@ from __future__ import annotations
 from subflow.config import SubFlowSettings
 from subflow.runtime import CoreRuntime, JobCoordinator
 from subflow.services.downloader import SubliminalDownloader
+from subflow.services.filesystem import FilesystemSource
 from subflow.services.glossary import GlossaryStore
+from subflow.services.media_browser import EmbyClient, JellyfinClient
+from subflow.services.media_source import MediaSource
 from subflow.services.media_tools import EmbeddedSubtitleExtractor, SubtitleSynchronizer
 from subflow.services.pipeline import SubtitlePipeline
 from subflow.services.plex import PlexClient
@@ -75,11 +78,30 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
         bilingual_merge_tolerance_ms=settings.bilingual_merge_tolerance_ms,
         bilingual_merge_min_match_ratio=settings.bilingual_merge_min_match_ratio,
     )
-    plex = PlexClient(
-        base_url=settings.plex_url,
-        token=settings.plex_token.get_secret_value(),
-        plex_path_prefix=settings.plex_path_prefix,
+    media_source = build_media_source(settings)
+    coordinator = JobCoordinator(pipeline, max_size=settings.worker_queue_size)
+    return CoreRuntime(media_source, coordinator, settings.scan_interval_seconds)
+
+
+def build_media_source(settings: SubFlowSettings) -> MediaSource:
+    if settings.platform == "filesystem":
+        return FilesystemSource(
+            media_root=settings.media_root,
+            extensions=settings.media_extensions,
+        )
+    if settings.platform == "plex":
+        return PlexClient(
+            base_url=settings.effective_server_url,
+            token=settings.effective_server_token,
+            plex_path_prefix=settings.effective_server_path_prefix,
+            media_root=settings.media_root,
+        )
+    client_type = JellyfinClient if settings.platform == "jellyfin" else EmbyClient
+    media_source: MediaSource = client_type(
+        base_url=settings.effective_server_url,
+        token=settings.effective_server_token,
+        user_id=settings.server_user_id,
+        server_path_prefix=settings.effective_server_path_prefix,
         media_root=settings.media_root,
     )
-    coordinator = JobCoordinator(pipeline, max_size=settings.worker_queue_size)
-    return CoreRuntime(plex, coordinator, settings.scan_interval_seconds)
+    return media_source

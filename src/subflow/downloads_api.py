@@ -70,7 +70,7 @@ def create_downloads_app(
 ) -> FastAPI:
     app = FastAPI(
         title="SubFlow Download Station",
-        version="0.1.0b1",
+        version="0.1.0b2",
         debug=False,
         docs_url=None,
         redoc_url=None,
