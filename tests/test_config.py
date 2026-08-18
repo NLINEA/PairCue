@@ -23,6 +23,30 @@ def test_glm_thinking_is_disabled_by_default() -> None:
     assert settings.fallback_disable_thinking is False
 
 
+def test_target_language_is_canonicalized_and_named() -> None:
+    settings = SubFlowSettings(target_language="ZH-hk")
+
+    assert settings.target_language == "zh-HK"
+    assert settings.effective_target_language_name == "Traditional Chinese (Hong Kong)"
+
+
+def test_custom_target_language_name_is_supported() -> None:
+    settings = SubFlowSettings(target_language="gd", target_language_name="Scottish Gaelic")
+
+    assert settings.effective_target_language_name == "Scottish Gaelic"
+
+
+@pytest.mark.parametrize("language", ["../../ja", "en", "en-GB"])
+def test_invalid_or_english_target_language_is_rejected(language: str) -> None:
+    with pytest.raises(ValidationError, match="target language"):
+        SubFlowSettings(target_language=language)
+
+
+def test_empty_target_language_style_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="style must not be empty"):
+        SubFlowSettings(target_language_style="   ")
+
+
 def test_download_service_has_separate_required_credentials() -> None:
     settings = DownloadStationSettings(
         username="download-user",

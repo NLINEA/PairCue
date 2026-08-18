@@ -8,6 +8,7 @@ from subflow.services.subtitle_files import (
     bilingual_subtitles,
     clean_spoken_dialogue,
     discover_sidecars,
+    find_language_sidecar,
     translated_subtitles,
 )
 
@@ -54,3 +55,12 @@ def test_translation_and_bilingual_require_exact_coverage() -> None:
 def test_language_enum_uses_plex_sidecar_names() -> None:
     assert SubtitleLanguage.TRADITIONAL_CHINESE.value == "zh-TW"
     assert SubtitleLanguage.SIMPLIFIED_CHINESE.value == "zh-CN"
+
+
+def test_custom_language_sidecar_matches_common_three_letter_tag(tmp_path: Path) -> None:
+    media = tmp_path / "Movie.mkv"
+    media.write_bytes(b"video")
+    japanese = tmp_path / "Movie.jpn.srt"
+    japanese.write_text("x", encoding="utf-8")
+
+    assert find_language_sidecar(media, "ja") == japanese

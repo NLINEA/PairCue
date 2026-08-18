@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from subflow.languages import canonicalize_language_tag, language_name
 
 
 def _secret_value(secret: SecretStr) -> str:
@@ -36,6 +38,14 @@ class SubFlowSettings(BaseSettings):
     providers: str = "gestdown,tvsubtitles,opensubtitles"
     sync_enabled: bool = True
     clean_english_output: bool = True
+
+    target_language: str = "zh-TW"
+    target_language_name: str = Field(default="", max_length=80)
+    target_language_style: str = Field(
+        default="natural, concise dialogue suitable for subtitles",
+        min_length=1,
+        max_length=200,
+    )
 
     translation_enabled: bool = False
     translation_base_url: str = "https://api.z.ai/api/coding/paas/v4"
@@ -70,6 +80,24 @@ class SubFlowSettings(BaseSettings):
             raise ValueError("credentials must not be embedded in service URLs")
         return value.rstrip("/")
 
+    @field_validator("target_language")
+    @classmethod
+    def validate_target_language(cls, value: str) -> str:
+        tag = canonicalize_language_tag(value)
+        if tag.split("-", 1)[0] == "en":
+            raise ValueError("target language must differ from the English source language")
+        return tag
+
+    @field_validator("target_language_name", "target_language_style")
+    @classmethod
+    def validate_translation_prompt_setting(cls, value: str, info: ValidationInfo) -> str:
+        value = value.strip()
+        if info.field_name == "target_language_style" and not value:
+            raise ValueError("target language style must not be empty")
+        if any(ord(character) < 32 for character in value):
+            raise ValueError("translation language settings must be a single line")
+        return value
+
     @model_validator(mode="after")
     def validate_secure_runtime(self) -> SubFlowSettings:
         token = _secret_value(self.api_token)
@@ -88,6 +116,10 @@ class SubFlowSettings(BaseSettings):
     def allowed_hosts(self) -> list[str]:
         hosts = [host.strip() for host in self.trusted_hosts.split(",") if host.strip()]
         return hosts or ["localhost", "127.0.0.1"]
+
+    @property
+    def effective_target_language_name(self) -> str:
+        return self.target_language_name or language_name(self.target_language)
 
 
 class DownloadStationSettings(BaseSettings):

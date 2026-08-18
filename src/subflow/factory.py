@@ -53,6 +53,9 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
             primary,
             fallback=fallback,
             batch_size=settings.translation_batch_size,
+            target_language=settings.target_language,
+            target_language_name=settings.effective_target_language_name,
+            target_language_style=settings.target_language_style,
         )
 
     pipeline = SubtitlePipeline(
@@ -64,6 +67,7 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
         translator=translator,
         glossary=glossary,
         clean_english_output=settings.clean_english_output,
+        target_language=settings.target_language,
     )
     plex = PlexClient(
         base_url=settings.plex_url,

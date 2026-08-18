@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "subflow-plex"
 version = "0.1.0b1"
-description = "Plex-first Traditional Chinese subtitle automation companion"
+description = "Plex-first multilingual subtitle automation companion"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Zackary" }]
-keywords = ["plex", "subtitles", "traditional-chinese", "translation", "nas"]
+keywords = ["plex", "subtitles", "multilingual", "translation", "nas"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: MIT License",

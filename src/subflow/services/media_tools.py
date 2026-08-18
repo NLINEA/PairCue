@@ -8,6 +8,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from subflow.languages import language_matches, observed_language_tag
+
 log = logging.getLogger(__name__)
 
 
@@ -18,20 +20,6 @@ def _required_binary(name: str) -> str:
     return binary
 
 
-LANGUAGE_MAP = {
-    "eng": "en",
-    "en": "en",
-    "english": "en",
-    "cht": "zh-TW",
-    "zht": "zh-TW",
-    "zh-tw": "zh-TW",
-    "chs": "zh-CN",
-    "zhs": "zh-CN",
-    "zh-cn": "zh-CN",
-    "chi": "zh",
-    "zho": "zh",
-    "zh": "zh",
-}
 TEXT_SUBTITLE_CODECS = {"subrip", "srt", "ass", "ssa", "webvtt", "mov_text"}
 
 
@@ -44,7 +32,11 @@ def ensure_media_path(path: Path, media_root: Path) -> Path:
 
 
 class EmbeddedSubtitleExtractor:
-    def extract(self, media_path: Path) -> tuple[Path, ...]:
+    def extract(
+        self,
+        media_path: Path,
+        languages: set[str] | None = None,
+    ) -> tuple[Path, ...]:
         probe = subprocess.run(  # noqa: S603 - fixed executable and argv; no shell
             [
                 _required_binary("ffprobe"),
@@ -72,7 +64,12 @@ class EmbeddedSubtitleExtractor:
             if codec not in TEXT_SUBTITLE_CODECS:
                 continue
             language = str(stream.get("tags", {}).get("language") or "").lower()
-            mapped = LANGUAGE_MAP.get(language)
+            mapped = observed_language_tag(language)
+            if languages is not None:
+                mapped = next(
+                    (requested for requested in languages if language_matches(language, requested)),
+                    None,
+                )
             if mapped is None:
                 continue
             target = media_path.parent / f"{media_path.stem}.{mapped}.srt"

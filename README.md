@@ -1,16 +1,20 @@
 # SubFlow
 
-SubFlow is a Plex-first subtitle automation companion for Traditional Chinese viewers. It finds or
-extracts an English subtitle, synchronizes it, translates every cue with an OpenAI-compatible model,
-and writes Plex-friendly Traditional Chinese and bilingual sidecars.
+SubFlow is a Plex-first subtitle automation companion. It finds or extracts an English subtitle,
+synchronizes it, translates every cue with an OpenAI-compatible model, and writes Plex-friendly
+target-language and bilingual sidecars. Traditional Chinese for Taiwan is the default, but the
+output language is configurable.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
 ## What it writes
 
 - `Movie.en.srt` — English base when one is downloaded or extracted.
-- `Movie.zh-TW.srt` — Traditional Chinese.
-- `Movie.zh-TW.cc.srt` — Traditional Chinese above English.
+- `Movie.<language>.srt` — translated target language.
+- `Movie.<language>.cc.srt` — target language above English.
+
+With the default `zh-TW` setting, the last two files are `Movie.zh-TW.srt` and
+`Movie.zh-TW.cc.srt`.
 
 Translation is all-or-nothing: SubFlow does not publish an output when even one cue is missing.
 By default, the English sidecar is also rewritten atomically with non-dialogue cues removed; set
@@ -39,6 +43,27 @@ can be configured with `SUBFLOW_TRANSLATION_BASE_URL`, `SUBFLOW_TRANSLATION_API_
 
 Subtitle text is sent to the configured translation provider. Users are responsible for reviewing
 that provider's privacy policy and terms.
+
+## Output language
+
+Set a [BCP-47 language tag](https://www.rfc-editor.org/info/bcp47) in `subflow.env`:
+
+```dotenv
+SUBFLOW_TARGET_LANGUAGE=zh-HK
+```
+
+Common examples include `zh-TW`, `zh-HK`, `zh-Hant`, `zh-CN`, `ja`, `ko`, `es`, `fr`, and
+`pt-BR`. Common language names are detected automatically. For a language or regional style that
+needs more direction, add:
+
+```dotenv
+SUBFLOW_TARGET_LANGUAGE_NAME=Traditional Chinese (Hong Kong)
+SUBFLOW_TARGET_LANGUAGE_STYLE=natural Cantonese-influenced Hong Kong wording suitable for subtitles
+```
+
+The beta uses English as its source language. A target beginning with `en` is therefore rejected.
+When AI translation is disabled, SubFlow asks subtitle providers for the configured target language;
+Chinese targets can also fall back to safe OpenCC script conversion.
 
 ## Optional Download Station UI
 
@@ -82,8 +107,9 @@ The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Project status
 
-The first beta intentionally targets one Plex server and one worker. Planned follow-ups include a
-translation cache, `zh-HK`, richer status reporting, and faster incremental Plex scans.
+The first beta intentionally targets one Plex server, one worker, and English source subtitles.
+Planned follow-ups include a translation cache, configurable source languages, richer status
+reporting, and faster incremental Plex scans.
 
 SubFlow is an independent project and is not affiliated with Plex, Synology, subtitle providers, or
 translation model providers.

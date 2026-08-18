@@ -7,13 +7,29 @@ from subflow.services.state import StateStore
 
 
 class NoopExtractor:
-    def extract(self, media_path: Path) -> tuple[Path, ...]:
+    def extract(self, media_path: Path, languages: set[str] | None = None) -> tuple[Path, ...]:
         return ()
 
 
 class NoopDownloader:
-    def download(self, media_path: Path, languages: set[object]) -> tuple[Path, ...]:
+    def download(self, media_path: Path, languages: set[str]) -> tuple[Path, ...]:
         return ()
+
+
+class TargetDownloader(NoopDownloader):
+    def __init__(self) -> None:
+        self.requests: list[set[str]] = []
+
+    def download(self, media_path: Path, languages: set[str]) -> tuple[Path, ...]:
+        self.requests.append(languages)
+        if "ja" not in languages:
+            return ()
+        output = media_path.parent / f"{media_path.stem}.ja.srt"
+        output.write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nこんにちは\n\n",
+            encoding="utf-8",
+        )
+        return (output,)
 
 
 class FullTranslator:
@@ -30,15 +46,22 @@ class PartialTranslator(FullTranslator):
         return {}
 
 
-def _pipeline(tmp_path: Path, translator: object) -> SubtitlePipeline:
+def _pipeline(
+    tmp_path: Path,
+    translator: object,
+    *,
+    target_language: str = "zh-TW",
+    downloader: object | None = None,
+) -> SubtitlePipeline:
     return SubtitlePipeline(
         media_root=tmp_path,
         state=StateStore(tmp_path / "state" / "subflow.sqlite3"),
-        downloader=NoopDownloader(),  # type: ignore[arg-type]
+        downloader=downloader or NoopDownloader(),  # type: ignore[arg-type]
         extractor=NoopExtractor(),  # type: ignore[arg-type]
         synchronizer=None,
         translator=translator,  # type: ignore[arg-type]
         glossary=GlossaryStore(tmp_path / "state" / "glossaries"),
+        target_language=target_language,
     )
 
 
@@ -67,3 +90,27 @@ def test_pipeline_does_not_publish_partial_translation(tmp_path: Path) -> None:
     assert result.status == "failed"
     assert not (tmp_path / "Movie.zh-TW.srt").exists()
     assert not (tmp_path / "Movie.zh-TW.cc.srt").exists()
+
+
+def test_pipeline_uses_custom_target_language_in_output_names(tmp_path: Path) -> None:
+    result = _pipeline(tmp_path, FullTranslator(), target_language="ja").process(_media(tmp_path))
+
+    assert result.status == "completed"
+    assert "to ja" in result.message
+    assert (tmp_path / "Movie.ja.srt").exists()
+    assert (tmp_path / "Movie.ja.cc.srt").exists()
+    assert not (tmp_path / "Movie.zh-TW.srt").exists()
+
+
+def test_download_only_mode_requests_the_custom_target(tmp_path: Path) -> None:
+    downloader = TargetDownloader()
+    result = _pipeline(
+        tmp_path,
+        None,
+        target_language="ja",
+        downloader=downloader,
+    ).process(_media(tmp_path))
+
+    assert result.status == "completed"
+    assert downloader.requests == [{"ja"}]
+    assert result.outputs == (tmp_path / "Movie.ja.srt",)

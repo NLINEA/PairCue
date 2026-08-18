@@ -21,7 +21,7 @@ flowchart LR
     Pipeline --> Provider["Subliminal provider adapter"]
     Pipeline --> Sync["ffsubsync adapter"]
     Pipeline --> Translate["Validated translator + fallback"]
-    Pipeline --> Output["Atomic .en / .zh-TW / .zh-TW.cc files"]
+    Pipeline --> Output["Atomic .en / target / target.cc files"]
     Pipeline --> State["SQLite state"]
 
     Browser["Optional browser UI"] --> DownloadAPI["Isolated Download Station app"]
@@ -36,14 +36,14 @@ They use different bearer tokens and ports.
 
 1. Resolve the Plex path under the configured media root; reject paths outside it.
 2. Deduplicate the queue and take a lock for the media path.
-3. Extract text-based embedded subtitles without guessing unknown languages.
+3. Extract text-based embedded subtitles matching English or the configured target language.
 4. Download an English base when required and optionally synchronize it.
 5. Remove non-dialogue cues from the in-memory translation source.
 6. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
    once with non-empty text. Use the fallback provider only after the primary exhausts its retries.
 7. Validate complete coverage across the whole file.
-8. Write bilingual output first and `zh-TW` last using atomic replacements. The `zh-TW` file is the
-   completion marker.
+8. Write bilingual output first and the configured target-language file last using atomic
+   replacements. The target file is the completion marker.
 9. Record the result in SQLite.
 
 ## Trade-offs
@@ -61,7 +61,6 @@ They use different bearer tokens and ports.
 
 - Incremental Plex pagination and event replay for very large libraries.
 - Translation cache keyed by source text, model, prompt version, and glossary version.
-- Hong Kong (`zh-HK`) language output.
+- Configurable English source variants and non-English source languages.
 - Metrics, structured logs, and an operator dashboard.
 - Multiple workers backed by a durable external queue.
-

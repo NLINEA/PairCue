@@ -7,6 +7,7 @@ from pathlib import Path
 
 import srt
 
+from subflow.languages import language_matches
 from subflow.services.atomic import atomic_write_text
 
 
@@ -85,6 +86,32 @@ def discover_sidecars(media_path: Path) -> Sidecars:
         generic_chinese=values.get(SubtitleLanguage.GENERIC_CHINESE),
         bilingual=bilingual,
     )
+
+
+def find_language_sidecar(
+    media_path: Path,
+    language: str,
+    *,
+    bilingual: bool = False,
+) -> Path | None:
+    """Find a Plex sidecar matching a requested language tag or known alias."""
+
+    prefix_length = len(media_path.stem) + 1
+    for candidate in media_path.parent.glob(f"{media_path.stem}.*.srt"):
+        tag = candidate.name[prefix_length:-4]
+        is_bilingual = tag.lower().endswith(".cc")
+        if bilingual != is_bilingual:
+            continue
+        if is_bilingual:
+            tag = tag[:-3]
+        if language_matches(tag, language):
+            return candidate
+    return None
+
+
+def sidecar_path(media_path: Path, language: str, *, bilingual: bool = False) -> Path:
+    suffix = ".cc.srt" if bilingual else ".srt"
+    return media_path.parent / f"{media_path.stem}.{language}{suffix}"
 
 
 def parse_srt(path: Path) -> list[srt.Subtitle]:
