@@ -4,8 +4,13 @@ PairCue Desktop lets you start without installing Python or learning terminal co
 
 1. Open **PairCue**.
 2. First, choose where you watch: Plex, Jellyfin, Emby, Kodi, Infuse, VLC, or a media folder.
-3. Choose the result you want first: combine two SRTs, try one video, or automate the library.
+3. Choose the result you want first: run the safe demo, combine two SRTs, try one video, or
+   automate the library.
 4. PairCue then shows only the settings needed for that result.
+
+Want to check the installation first? Press **Try safe demo**. PairCue creates and highlights a
+tiny English-Spanish bilingual SRT using only dialogue written for this project. It needs no media,
+server, account, API key, or network request.
 
 Already have two SRT files? Press **Choose two SRTs**, choose the spoken subtitle and then the
 learning subtitle. PairCue creates a new bilingual `.mul.srt` locally, highlights it in the file

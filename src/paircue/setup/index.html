@@ -107,13 +107,14 @@
                 </div>
                 <div class="quick-pair-actions">
                   <label>
-                    <span>First line in each subtitle cue</span>
+                    <span>Which language should appear on top?</span>
                     <select id="quick-pair-order">
                       <option value="target-first">Learning language</option>
                       <option value="source-first">Spoken language</option>
                     </select>
                   </label>
                   <button id="quick-pair" type="button">Choose two SRTs</button>
+                  <button id="quick-demo" class="demo-button" type="button">Try safe demo</button>
                 </div>
                 <p id="quick-pair-status" class="quick-pair-status" role="status" aria-live="polite"></p>
               </aside>
@@ -242,14 +243,14 @@
             <h2 id="language-heading">Which two languages?</h2>
             <div class="language-row">
               <label>
-                <span>Spoken / source language</span>
+                <span>Language spoken in the video</span>
                 <input id="source-language" list="language-options" value="en" autocomplete="off">
               </label>
               <button id="swap-languages" class="swap" type="button" aria-label="Swap languages">
                 <span aria-hidden="true">⇄</span>
               </button>
               <label>
-                <span>Learning language</span>
+                <span>Language you want to read or learn</span>
                 <input id="target-language" list="language-options" value="zh-HK" autocomplete="off">
               </label>
             </div>
@@ -257,7 +258,6 @@
               <option value="en">English</option>
               <option value="zh-HK">Traditional Chinese (Hong Kong)</option>
               <option value="zh-TW">Traditional Chinese (Taiwan)</option>
-              <option value="zh-CN">Simplified Chinese</option>
               <option value="ja">Japanese</option>
               <option value="ko">Korean</option>
               <option value="es">Spanish</option>
@@ -265,7 +265,7 @@
               <option value="de">German</option>
               <option value="pt-BR">Portuguese (Brazil)</option>
             </datalist>
-            <p class="hint">Use a standard language tag. You can type one that is not listed.</p>
+            <p class="hint">Choose from the list, or type another language code in either field.</p>
 
             <details class="advanced">
               <summary>Subtitle style and line order</summary>
@@ -358,7 +358,7 @@
                 </div>
                 <div id="translation-panel" class="field-grid compact-fields">
                   <label>
-                    <span>Z.AI API key</span>
+                    <span>Translation provider API key</span>
                     <input id="translation-key" type="password" autocomplete="new-password">
                     <small>Subtitle dialogue is sent to this provider for translation.</small>
                   </label>

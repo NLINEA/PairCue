@@ -490,6 +490,12 @@ h1 span {
   opacity: 0.72;
 }
 
+.quick-pair-card .demo-button {
+  border: 1px solid #527166;
+  background: transparent;
+  color: var(--ink);
+}
+
 .quick-pair-status {
   grid-column: 1 / -1;
   min-height: 1.4em;

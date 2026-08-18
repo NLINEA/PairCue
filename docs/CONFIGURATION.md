@@ -1,0 +1,165 @@
+# PairCue configuration
+
+PairCue's desktop setup asks for a platform and a result first, then reveals only the settings that
+result needs. This reference is for advanced setup, command-line use, and `paircue.env` files.
+
+Start with a single video or the project-owned safe demo before automating a full library. Run
+`paircue doctor` to check a saved setup without printing secrets.
+
+## Pick one media source
+
+PairCue processes one media server or filesystem root per installation.
+
+Plex:
+
+```dotenv
+PAIRCUE_PLATFORM=plex
+PAIRCUE_SERVER_URL=http://plex:32400
+PAIRCUE_SERVER_TOKEN=your-plex-token
+PAIRCUE_SERVER_PATH_PREFIX=/volume1/Media
+```
+
+Jellyfin:
+
+```dotenv
+PAIRCUE_PLATFORM=jellyfin
+PAIRCUE_SERVER_URL=http://jellyfin:8096
+PAIRCUE_SERVER_TOKEN=your-api-key
+PAIRCUE_SERVER_USER_ID=your-user-id
+PAIRCUE_SERVER_PATH_PREFIX=/media
+```
+
+Use `PAIRCUE_PLATFORM=emby` with the Emby URL and credentials for Emby. For a plain media folder:
+
+```dotenv
+PAIRCUE_PLATFORM=filesystem
+```
+
+`PAIRCUE_SERVER_PATH_PREFIX` is the library path reported by the server. `MEDIA_PATH` is that same
+library on the Docker host; Docker mounts it as `PAIRCUE_MEDIA_ROOT=/media` inside PairCue. Existing
+`PAIRCUE_PLEX_*` variables remain accepted for backward compatibility.
+
+The selected folder must be readable and writable by PairCue so it can save the SRT beside each
+video. Stop PairCue before disconnecting a network drive.
+
+## Languages and line order
+
+The setup page uses language names. Environment files use standard BCP-47 language tags:
+
+```dotenv
+PAIRCUE_SOURCE_LANGUAGE=ja
+PAIRCUE_TARGET_LANGUAGE=en
+PAIRCUE_BILINGUAL_ORDER=target-first
+```
+
+Common tags include `en`, `es`, `fr`, `ja`, `ko`, `zh-TW`, `zh-HK`, `zh-Hant`, `zh-CN`, and
+`pt-BR`. Source and target must differ. `target-first` places the learning language on top;
+`source-first` places the spoken language on top.
+
+To describe a regional style more precisely:
+
+```dotenv
+PAIRCUE_TARGET_LANGUAGE_NAME=Traditional Chinese (Hong Kong)
+PAIRCUE_TARGET_LANGUAGE_STYLE=natural Hong Kong wording suitable for subtitles
+```
+
+When AI translation is disabled, PairCue can search for the target language instead. Chinese
+targets can also use a safe OpenCC script conversion when applicable.
+
+## Translation provider
+
+PairCue works with OpenAI-compatible translation endpoints:
+
+```dotenv
+PAIRCUE_TRANSLATION_BASE_URL=https://your-provider.example/v1
+PAIRCUE_TRANSLATION_API_KEY=your-api-key
+PAIRCUE_TRANSLATION_MODEL=your-model
+```
+
+A second compatible provider can be configured as fallback. Subtitle text is sent to an enabled
+translation provider, so review its privacy policy, retention, pricing, and model terms first.
+
+Translation is all-or-nothing: PairCue publishes no bilingual result if even one cue is missing.
+
+## Subtitle search and download
+
+PairCue contains an independently written adapter for the documented OpenSubtitles.com REST API.
+It calculates the OpenSubtitles file hash, tries an exact release match, then falls back to title,
+year, season, and episode metadata.
+
+Create your own OpenSubtitles API consumer and set:
+
+```dotenv
+PAIRCUE_SUBTITLE_DOWNLOAD_ENABLED=true
+PAIRCUE_OPENSUBTITLES_API_KEY=your-api-key
+```
+
+An account login is optional. If used, set both `PAIRCUE_OPENSUBTITLES_USERNAME` and
+`PAIRCUE_OPENSUBTITLES_PASSWORD`. Search is disabled without an API key. API quotas, provider
+terms, and permission to use downloaded subtitle content remain the user's responsibility.
+
+## Generate subtitles from speech
+
+If no source subtitle exists, PairCue can extract the first audio track into bounded FLAC chunks
+and call an OpenAI-compatible transcription endpoint. Every returned segment and timestamp is
+validated before the source SRT is published.
+
+```dotenv
+PAIRCUE_TRANSCRIPTION_ENABLED=true
+PAIRCUE_TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
+PAIRCUE_TRANSCRIPTION_API_KEY=your-api-key
+PAIRCUE_TRANSCRIPTION_MODEL=whisper-1
+```
+
+`whisper-1` is the safe default because its documented API supports timestamped `verbose_json`
+segments. A compatible self-hosted endpoint can also be used. Transcription is off by default and
+sends extracted audio to the configured endpoint when enabled. FFmpeg is required and not bundled.
+
+## Pair two existing subtitle languages
+
+When both sidecars exist, such as `Movie.ja.srt` and `Movie.en.srt`, PairCue matches cues by time and
+creates `Movie.mul.srt` without translation. One cue can safely align with two shorter cues in the
+other track.
+
+The default minimum is 70% timing coverage in both tracks. PairCue refuses to publish below that
+confidence. Advanced thresholds are configurable:
+
+```dotenv
+PAIRCUE_BILINGUAL_MERGE_TOLERANCE_MS=350
+PAIRCUE_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
+```
+
+## Automatic synchronization
+
+Synchronization is enabled by default. PairCue uses a user-installed FFmpeg to decode temporary
+mono audio, then its own activity detector and FFT cross-correlation to estimate subtitle offset.
+It keeps the original timing if confidence is too low.
+
+```dotenv
+PAIRCUE_SYNC_ENABLED=true
+PAIRCUE_SYNC_MAX_OFFSET_SECONDS=120
+PAIRCUE_SYNC_MIN_CONFIDENCE=0.24
+```
+
+The translated and bilingual cues inherit the synchronized source timing. Writes are atomic.
+
+## Webhooks
+
+Polling requires no webhook setup. For faster events, Jellyfin or Emby can send authenticated JSON
+to `/v1/webhooks/jellyfin` or `/v1/webhooks/emby`:
+
+```json
+{"NotificationType":"ItemAdded","ItemId":"the-item-id","ItemType":"Movie"}
+```
+
+Use `Content-Type: application/json` and `Authorization: Bearer <PAIRCUE_API_TOKEN>`. Jellyfin's
+official Webhook Plugin supports custom generic templates. Plex can use its native webhook.
+
+## Files written
+
+- `Movie.<source>.srt` — synchronized source subtitle.
+- `Movie.<target>.srt` — target-language subtitle.
+- `Movie.mul.srt` — both languages sharing one timeline.
+
+By default, non-dialogue cues are removed when the source sidecar is rewritten. Set
+`PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve source text exactly.

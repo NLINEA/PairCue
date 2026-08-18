@@ -273,6 +273,51 @@ def test_desktop_quick_pair_is_origin_protected_and_returns_only_the_output_name
     assert server.state.quick_pair_completed.is_set()
 
 
+def test_desktop_safe_demo_uses_a_separate_origin_protected_action(tmp_path: Path) -> None:
+    assets = Path(paircue.__file__).with_name("setup")
+    output = tmp_path / "PairCue Demo.mul.srt"
+    observed_orders: list[str] = []
+
+    def demo_pair(order: str) -> QuickPairResult:
+        observed_orders.append(order)
+        return QuickPairResult(output, 1, 1)
+
+    server = SetupHTTPServer(
+        assets,
+        tmp_path / "paircue.env",
+        desktop=True,
+        demo_pair=demo_pair,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(base_url=server.origin) as client:
+            rejected = client.post(
+                "/demo-pair?order=target-first",
+                headers={"Authorization": f"Bearer {server.token}"},
+            )
+            completed = client.post(
+                "/demo-pair?order=target-first",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert rejected.status_code == 403
+    assert completed.json() == {
+        "completed": True,
+        "filename": "PairCue Demo.mul.srt",
+        "message": "Created a bilingual subtitle (100%/100% matched).",
+    }
+    assert observed_orders == ["target-first"]
+    assert server.state.quick_pair_output == output
+
+
 def test_setup_server_rejects_cross_origin_and_oversized_requests(tmp_path: Path) -> None:
     assets = Path(paircue.__file__).with_name("setup")
     output = tmp_path / "paircue.env"

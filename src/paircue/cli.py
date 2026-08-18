@@ -11,10 +11,12 @@ import sys
 import tempfile
 import webbrowser
 from collections.abc import Sequence
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Literal, cast
 
 import httpx
+import srt
 import uvicorn
 from pydantic import ValidationError
 
@@ -280,6 +282,7 @@ def _setup(*, no_open: bool) -> int:
         connection_test=test_library_connection if _is_frozen() else None,
         choose_folder=_choose_media_directory if _is_frozen() else None,
         quick_pair=_quick_pair_subtitles if _is_frozen() else None,
+        demo_pair=_quick_pair_demo if _is_frozen() else None,
     )
     if state.quick_pair_output is not None:
         print(f"Created bilingual subtitle: {state.quick_pair_output}")
@@ -786,6 +789,68 @@ def _quick_pair_subtitles(order: str) -> QuickPairResult | None:
         ) from exc
     except ValueError as exc:
         raise SetupQuickPairError(str(exc)) from None
+    _reveal_path(output)
+    return QuickPairResult(
+        output=output,
+        source_match_ratio=merged.source_match_ratio,
+        target_match_ratio=merged.target_match_ratio,
+    )
+
+
+def _quick_pair_demo(
+    order: str,
+    output_directory: Path | None = None,
+) -> QuickPairResult:
+    """Create a tiny project-owned bilingual subtitle to prove the install works."""
+
+    if order not in {"target-first", "source-first"}:
+        raise SetupQuickPairError("Choose which subtitle appears first.")
+    destination = output_directory or Path.home() / "Downloads"
+    if output_directory is None and not destination.is_dir():
+        destination = _default_setup_output().parent
+    destination.mkdir(parents=True, exist_ok=True)
+    source = [
+        srt.Subtitle(
+            index=1,
+            start=timedelta(seconds=1),
+            end=timedelta(seconds=3, milliseconds=400),
+            content="Where should we begin?",
+        ),
+        srt.Subtitle(
+            index=2,
+            start=timedelta(seconds=4, milliseconds=200),
+            end=timedelta(seconds=6, milliseconds=800),
+            content="With one scene at a time.",
+        ),
+    ]
+    target = [
+        srt.Subtitle(
+            index=1,
+            start=timedelta(seconds=1, milliseconds=120),
+            end=timedelta(seconds=3, milliseconds=520),
+            content="¿Por dónde empezamos?",
+        ),
+        srt.Subtitle(
+            index=2,
+            start=timedelta(seconds=4, milliseconds=100),
+            end=timedelta(seconds=6, milliseconds=700),
+            content="Una escena a la vez.",
+        ),
+    ]
+    merged = merge_bilingual_subtitles(
+        source,
+        target,
+        order=cast(Literal["target-first", "source-first"], order),
+    )
+    output, reservation_inode = _reserve_quick_pair_output(
+        destination / "PairCue Demo.en.srt",
+        destination / "PairCue Demo.es.srt",
+    )
+    try:
+        write_srt(output, merged.subtitles)
+    except Exception:
+        _remove_quick_pair_reservation(output, reservation_inode)
+        raise
     _reveal_path(output)
     return QuickPairResult(
         output=output,

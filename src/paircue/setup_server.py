@@ -100,6 +100,7 @@ class SetupHTTPServer(ThreadingHTTPServer):
         connection_test: Callable[[str], str] | None = None,
         choose_folder: Callable[[], Path | None] | None = None,
         quick_pair: Callable[[str], QuickPairResult | None] | None = None,
+        demo_pair: Callable[[str], QuickPairResult] | None = None,
     ) -> None:
         super().__init__(("127.0.0.1", 0), SetupRequestHandler)
         self.assets_root = assets_root
@@ -109,6 +110,7 @@ class SetupHTTPServer(ThreadingHTTPServer):
         self.connection_test = connection_test
         self.choose_folder = choose_folder
         self.quick_pair = quick_pair
+        self.demo_pair = demo_pair
         self.state = SetupState(threading.Event())
         self.save_lock = threading.Lock()
         self.quick_pair_lock = threading.Lock()
@@ -169,7 +171,14 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         parsed = urlparse(self.path)
         if (
-            parsed.path not in {"/config", "/test-platform", "/choose-folder", "/quick-pair"}
+            parsed.path
+            not in {
+                "/config",
+                "/test-platform",
+                "/choose-folder",
+                "/quick-pair",
+                "/demo-pair",
+            }
             or not self._trusted_host()
             or not self._authorized()
             or self.headers.get("Origin") != self.server.origin
@@ -196,8 +205,9 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
-        if parsed.path == "/quick-pair":
-            if self.server.quick_pair is None:
+        if parsed.path in {"/quick-pair", "/demo-pair"}:
+            pair = self.server.quick_pair if parsed.path == "/quick-pair" else self.server.demo_pair
+            if pair is None:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             order = parse_qs(parsed.query).get("order", [""])[0]
@@ -210,12 +220,12 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
             if not self.server.quick_pair_lock.acquire(blocking=False):
                 self._json_response(
                     HTTPStatus.CONFLICT,
-                    {"completed": False, "message": "A Quick Pair window is already open."},
+                    {"completed": False, "message": "Another subtitle action is already open."},
                 )
                 return
             try:
                 try:
-                    result = self.server.quick_pair(order)
+                    result = pair(order)
                 finally:
                     self.server.quick_pair_lock.release()
             except SetupQuickPairError as exc:
@@ -226,12 +236,14 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
                 return
             except Exception as exc:
                 log.warning("desktop Quick Pair failed (%s)", type(exc).__name__)
+                message = (
+                    "PairCue could not create the safe demo. Check folder permissions."
+                    if parsed.path == "/demo-pair"
+                    else "PairCue could not pair those subtitle files."
+                )
                 self._json_response(
                     HTTPStatus.INTERNAL_SERVER_ERROR,
-                    {
-                        "completed": False,
-                        "message": "PairCue could not pair those subtitle files.",
-                    },
+                    {"completed": False, "message": message},
                 )
                 return
             if result is None:
@@ -390,6 +402,7 @@ def run_setup_wizard(
     connection_test: Callable[[str], str] | None = None,
     choose_folder: Callable[[], Path | None] | None = None,
     quick_pair: Callable[[str], QuickPairResult | None] | None = None,
+    demo_pair: Callable[[str], QuickPairResult] | None = None,
 ) -> SetupState:
     server = SetupHTTPServer(
         assets_root,
@@ -398,6 +411,7 @@ def run_setup_wizard(
         connection_test=connection_test,
         choose_folder=choose_folder,
         quick_pair=quick_pair,
+        demo_pair=demo_pair,
     )
     thread = threading.Thread(target=server.serve_forever, name="paircue-setup", daemon=True)
     thread.start()

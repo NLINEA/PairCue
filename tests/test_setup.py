@@ -69,6 +69,9 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert 'fetch("/test-platform"' in javascript
     assert 'fetch("/choose-folder"' in javascript
     assert 'fetch(\n      `/quick-pair?order=' in javascript
+    assert "`/demo-pair?order=" in javascript
+    assert "Try safe demo" in html
+    assert "Which language should appear on top?" in html
     assert "No Docker or terminal command required." in javascript
 
 

@@ -700,6 +700,34 @@ async function quickPairSubtitles() {
   }
 }
 
+async function quickPairDemo() {
+  if (!desktopApp || !setupToken) {
+    return;
+  }
+  const button = byId("quick-demo");
+  const status = byId("quick-pair-status");
+  button.disabled = true;
+  button.textContent = "Creating demo…";
+  status.textContent = "Creating a tiny project-owned subtitle in your Downloads folder.";
+  try {
+    const order = value("quick-pair-order");
+    const response = await fetch(`/demo-pair?order=${encodeURIComponent(order)}`, {
+      method: "POST",
+      headers: authorizedHeaders(),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.completed) {
+      throw new Error(payload.message || "PairCue could not create the safe demo.");
+    }
+    button.textContent = "Demo complete";
+    status.textContent = `${payload.message} ${payload.filename} is highlighted in your file manager. It uses only short dialogue written for PairCue.`;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Try safe demo";
+    status.textContent = error.message;
+  }
+}
+
 form.addEventListener("input", () => {
   clearValidity();
   updatePreview();
@@ -750,6 +778,7 @@ byId("copy-config").addEventListener("click", copyConfig);
 byId("download-config").addEventListener("click", saveConfig);
 byId("choose-media-folder").addEventListener("click", chooseMediaFolder);
 byId("quick-pair").addEventListener("click", quickPairSubtitles);
+byId("quick-demo").addEventListener("click", quickPairDemo);
 byId("continue-platform").addEventListener("click", showJourneyStage);
 byId("continue-journey").addEventListener("click", showDetailsStage);
 byId("change-platform").addEventListener("click", showPlatformStage);

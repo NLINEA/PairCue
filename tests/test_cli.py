@@ -123,6 +123,31 @@ def test_desktop_quick_pair_removes_its_reservation_when_writing_fails(
     assert not (tmp_path / "Movie.mul.srt").exists()
 
 
+def test_desktop_safe_demo_creates_only_project_owned_dialogue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    revealed: list[Path] = []
+    monkeypatch.setattr(cli, "_reveal_path", revealed.append)
+
+    result = cli._quick_pair_demo("target-first", tmp_path)
+
+    assert result.output == tmp_path / "PairCue Demo.mul.srt"
+    assert result.source_match_ratio == 1
+    assert result.target_match_ratio == 1
+    assert result.output.read_text(encoding="utf-8") == (
+        "1\n"
+        "00:00:01,000 --> 00:00:03,520\n"
+        "¿Por dónde empezamos?\n"
+        "Where should we begin?\n\n"
+        "2\n"
+        "00:00:04,100 --> 00:00:06,800\n"
+        "Una escena a la vez.\n"
+        "With one scene at a time.\n\n"
+    )
+    assert revealed == [result.output]
+
+
 def test_setup_command_opens_packaged_private_wizard(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -245,6 +270,7 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
         connection_test: object,
         choose_folder: object,
         quick_pair: object,
+        demo_pair: object,
     ) -> SetupState:
         assert callable(on_single_saved)
         assert on_library_saved is None
@@ -252,6 +278,7 @@ def test_bare_paircue_continues_from_setup_to_native_video_picker(
         assert connection_test is None
         assert choose_folder is None
         assert quick_pair is None
+        assert demo_pair is None
         on_single_saved(state)
         return state
 
@@ -312,12 +339,14 @@ def test_desktop_library_setup_starts_dashboard_before_leaving_the_wizard(
         connection_test: object,
         choose_folder: object,
         quick_pair: object,
+        demo_pair: object,
     ) -> SetupState:
         assert desktop is True
         assert callable(on_library_saved)
         assert callable(connection_test)
         assert callable(choose_folder)
         assert callable(quick_pair)
+        assert callable(demo_pair)
         on_library_saved(state)
         return state
 
