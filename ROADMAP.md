@@ -32,6 +32,6 @@ PairCue is not trying to become a media player, hosted subtitle account, analyti
 client, or replacement for library managers. Download Station remains optional and isolated. New
 features should strengthen the bilingual-learning result, privacy, or ease of use.
 
-Discuss roadmap ideas in [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions)
+Discuss roadmap ideas in [GitHub Discussions](https://github.com/NLINEA/PairCue/discussions)
 or submit a focused
-[feature request](https://github.com/zacklam1120-spec/PairCue/issues/new?template=feature_request.yml).
+[feature request](https://github.com/NLINEA/PairCue/issues/new?template=feature_request.yml).

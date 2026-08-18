@@ -24,6 +24,6 @@ Pick the shortest guide that matches what you want to do.
 - [Contributing](../CONTRIBUTING.md) — development setup, checks, and provenance rules.
 - [Dependency policy](../DEPENDENCY_POLICY.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
 
-For usage questions, use [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions).
+For usage questions, use [GitHub Discussions](https://github.com/NLINEA/PairCue/discussions).
 For reproducible bugs, use the guided
-[bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml).
+[bug form](https://github.com/NLINEA/PairCue/issues/new?template=bug_report.yml).

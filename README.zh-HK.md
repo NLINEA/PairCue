@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zacklam1120-spec/PairCue/releases"><strong>下載 Beta</strong></a>
+  <a href="https://github.com/NLINEA/PairCue/releases"><strong>下載 Beta</strong></a>
   · <a href="#完全唔識用由呢度開始">新手開始</a>
   · <a href="README.md">English</a>
 </p>
@@ -27,7 +27,7 @@ PairCue 會重用、搜尋或生成字幕，需要時先翻譯，再按時間對
 
 ## 完全唔識用？由呢度開始
 
-1. 喺 [Releases](https://github.com/zacklam1120-spec/PairCue/releases) 下載你部電腦嘅版本。
+1. 喺 [Releases](https://github.com/NLINEA/PairCue/releases) 下載你部電腦嘅版本。
 2. 解壓後開啟 **PairCue**。
 3. 先揀你平時用嘅平台：Plex、Jellyfin、Emby，或者其他播放器／資料夾。
 4. 撳 **Try safe demo**。
@@ -76,7 +76,7 @@ VLC 或其他支援 SRT 嘅播放器使用。
 - [功能方向及 Roadmap](ROADMAP.md)
 - [支援同安全回報方法](SUPPORT.md)
 
-有問題可以去 [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions)。如果
+有問題可以去 [GitHub Discussions](https://github.com/NLINEA/PairCue/discussions)。如果
 PairCue 對你有用，歡迎畀一粒 Star，等更多想用自己片庫學語言嘅人搵到佢。
 
 PairCue 以 [MIT License](LICENSE) 開源，獨立開發，並不隸屬 Plex、Jellyfin、Emby、Synology、

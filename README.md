@@ -12,16 +12,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zacklam1120-spec/PairCue/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zacklam1120-spec/PairCue/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/zacklam1120-spec/PairCue/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/zacklam1120-spec/PairCue?include_prereleases&sort=semver"></a>
+  <a href="https://github.com/NLINEA/PairCue/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/NLINEA/PairCue/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/NLINEA/PairCue/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/NLINEA/PairCue?include_prereleases&sort=semver"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8ff0c8"></a>
   <img alt="Plex, Jellyfin, Emby and folders" src="https://img.shields.io/badge/Plex%20%7C%20Jellyfin%20%7C%20Emby%20%7C%20Folders-0b1110">
 </p>
 
 <p align="center">
-  <a href="https://github.com/zacklam1120-spec/PairCue/releases"><strong>Download the beta</strong></a>
+  <a href="https://github.com/NLINEA/PairCue/releases"><strong>Download the beta</strong></a>
   · <a href="#see-it-before-setup">See the safe demo</a>
-  · <a href="https://github.com/zacklam1120-spec/PairCue">Star PairCue</a>
+  · <a href="https://github.com/NLINEA/PairCue">Star PairCue</a>
 </p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-HK.md">繁體中文</a></p>
@@ -70,10 +70,10 @@ No Python or terminal is required. Download, unzip, then open **PairCue**.
 
 | Your computer | Beta download |
 |---|---|
-| Apple silicon Mac | [PairCue for Apple silicon](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-macOS-arm64.zip) |
-| Intel Mac | [PairCue for Intel Mac](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-macOS-x64.zip) |
-| Windows | [PairCue for Windows](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-windows-x64.zip) |
-| Linux | [PairCue for Linux](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-linux-x64.tar.gz) |
+| Apple silicon Mac | [PairCue for Apple silicon](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-macOS-arm64.zip) |
+| Intel Mac | [PairCue for Intel Mac](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-macOS-x64.zip) |
+| Windows | [PairCue for Windows](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-windows-x64.zip) |
+| Linux | [PairCue for Linux](https://github.com/NLINEA/PairCue/releases/download/v0.1.0b13/PairCue-linux-x64.tar.gz) |
 
 The beta apps are not yet signed. On macOS, right-click PairCue and choose **Open** the first time.
 Windows may show an unrecognized-publisher warning. Download only from this repository; every
@@ -164,9 +164,9 @@ New here? Start with the [10-minute beta mission](docs/BETA_TEST.md) or
 - [Contributing](CONTRIBUTING.md)
 - [Release changes](CHANGELOG.md)
 
-Questions belong in [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions).
+Questions belong in [GitHub Discussions](https://github.com/NLINEA/PairCue/discussions).
 For a reproducible problem, use the guided
-[bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml). Nothing is
+[bug form](https://github.com/NLINEA/PairCue/issues/new?template=bug_report.yml). Nothing is
 collected automatically. Never post credentials, private paths, library screenshots, or subtitle
 content you do not have permission to share.
 

@@ -52,8 +52,8 @@ def test_visual_setup_is_self_contained_and_only_calls_its_local_origin() -> Non
     assert not re.search(r"src=[\"']https?://", html)
     external_links = re.findall(r"href=[\"'](https?://[^\"']+)", html)
     assert external_links == [
-        "https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml",
-        "https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml",
+        "https://github.com/NLINEA/PairCue/issues/new?template=beta_report.yml",
+        "https://github.com/NLINEA/PairCue/issues/new?template=beta_report.yml",
     ]
     assert html.count('rel="noopener noreferrer"') == 2
 

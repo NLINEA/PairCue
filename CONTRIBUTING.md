@@ -5,7 +5,7 @@ changes with a clear user outcome are the easiest to review.
 
 ## Before starting
 
-- Use a [GitHub Discussion](https://github.com/zacklam1120-spec/PairCue/discussions) for a question
+- Use a [GitHub Discussion](https://github.com/NLINEA/PairCue/discussions) for a question
   or early product idea.
 - Open an issue before a large behavior, architecture, dependency, or file-format change.
 - Read [Architecture](ARCHITECTURE.md), [Dependency policy](DEPENDENCY_POLICY.md), and the

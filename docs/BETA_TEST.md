@@ -6,7 +6,7 @@ or PairCue account is involved.
 ## 1. Check the app safely
 
 1. Download the archive for your computer from the
-   [latest beta release](https://github.com/zacklam1120-spec/PairCue/releases).
+   [latest beta release](https://github.com/NLINEA/PairCue/releases).
 2. Unzip it and open **PairCue**.
 3. Choose the player you use.
 4. Choose **Try safe demo**.
@@ -29,7 +29,7 @@ appear, make its base filename match the video while keeping the `.mul.srt` endi
 
 ## 3. Report only the outcome
 
-Use the short [first-result form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml).
+Use the short [first-result form](https://github.com/NLINEA/PairCue/issues/new?template=beta_report.yml).
 Tell us the platform, the two language names, whether you succeeded without help, and the most
 confusing step.
 

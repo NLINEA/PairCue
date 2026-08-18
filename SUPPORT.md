@@ -2,13 +2,13 @@
 
 ## Usage questions
 
-Use [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions) for setup help,
+Use [GitHub Discussions](https://github.com/NLINEA/PairCue/discussions) for setup help,
 player behavior, language-pair questions, and ideas that are not yet a clear bug. Check
 [Troubleshooting](docs/TROUBLESHOOTING.md) first.
 
 ## Reproducible bugs
 
-Use the guided [bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml).
+Use the guided [bug form](https://github.com/NLINEA/PairCue/issues/new?template=bug_report.yml).
 Include:
 
 - PairCue version from `paircue --version` or the release archive name;
