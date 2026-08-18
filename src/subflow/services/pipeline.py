@@ -47,8 +47,10 @@ class SubtitlePipeline:
         synchronizer: SubtitleSynchronizer | None,
         translator: CompleteTranslator | None,
         glossary: GlossaryStore,
-        clean_english_output: bool = True,
+        clean_source_output: bool = True,
+        source_language: str = "en",
         target_language: str = "zh-TW",
+        bilingual_order: str = "target-first",
     ) -> None:
         self.media_root = media_root
         self.state = state
@@ -57,8 +59,10 @@ class SubtitlePipeline:
         self.synchronizer = synchronizer
         self.translator = translator
         self.glossary = glossary
-        self.clean_english_output = clean_english_output
+        self.clean_source_output = clean_source_output
+        self.source_language = source_language
         self.target_language = target_language
+        self.bilingual_order = bilingual_order
         self.locks = KeyedLockPool()
         profile = opencc_profile(target_language)
         self._target_converter = OpenCC(profile) if profile is not None else None
@@ -82,13 +86,15 @@ class SubtitlePipeline:
             return result
 
     def _process_locked(self, item: MediaItem, media_path: Path) -> ProcessResult:
-        self.extractor.extract(media_path, {"en", *self._download_targets()})
+        self.extractor.extract(media_path, {self.source_language, *self._download_targets()})
         target = find_language_sidecar(media_path, self.target_language)
-        if target is not None:
+        bilingual = find_language_sidecar(media_path, self.target_language, bilingual=True)
+        if target is not None and (self.translator is None or bilingual is not None):
+            outputs = (target,) if bilingual is None else (target, bilingual)
             return ProcessResult(
                 "skipped",
-                f"{self.target_language} subtitle already exists",
-                (target,),
+                f"{self.target_language} output already exists",
+                outputs,
             )
 
         if self.translator is None:
@@ -116,39 +122,41 @@ class SubtitlePipeline:
                 f"no {self.target_language} subtitle was found and translation is disabled"
             )
 
-        sidecars = discover_sidecars(media_path)
-        if sidecars.english is None:
-            downloaded = self.downloader.download(media_path, {"en"})
-            downloaded_english = next(
-                (path for path in downloaded if path.name.endswith(".en.srt")), None
-            )
-            if downloaded_english is not None and self.synchronizer is not None:
-                self.synchronizer.sync(media_path, downloaded_english)
-            sidecars = discover_sidecars(media_path)
+        source_path = find_language_sidecar(media_path, self.source_language)
+        if source_path is None:
+            self.downloader.download(media_path, {self.source_language})
+            source_path = find_language_sidecar(media_path, self.source_language)
+        if source_path is None:
+            raise RuntimeError(f"no {self.source_language} subtitle is available for translation")
+        synchronized = False
+        if self.synchronizer is not None:
+            synchronized = self.synchronizer.sync(media_path, source_path)
 
-        if sidecars.english is None:
-            raise RuntimeError("no English subtitle is available for translation")
-
-        english = clean_spoken_dialogue(parse_srt(sidecars.english))
+        source = clean_spoken_dialogue(parse_srt(source_path))
         glossary = self.glossary.load(item.show_title or item.title)
         translations = self.translator.translate_all(
-            english,
+            source,
             context=item.context_label,
             glossary=glossary,
         )
-        translated = translated_subtitles(english, translations)
-        bilingual = bilingual_subtitles(english, translated)
+        translated = translated_subtitles(source, translations)
+        bilingual_output = bilingual_subtitles(
+            source,
+            translated,
+            order=self.bilingual_order,
+        )
 
         translated_path = sidecar_path(media_path, self.target_language)
         bilingual_path = sidecar_path(media_path, self.target_language, bilingual=True)
-        # Each file is atomic; the target-only file is written last as the completion marker.
-        if self.clean_english_output:
-            write_srt(sidecars.english, english)
-        write_srt(bilingual_path, bilingual)
+        # Each file is atomic; bilingual is last so it marks a complete learning-language pair.
+        if self.clean_source_output:
+            write_srt(source_path, source)
         write_srt(translated_path, translated)
+        write_srt(bilingual_path, bilingual_output)
+        action = "aligned and translated" if synchronized else "translated"
         return ProcessResult(
             "completed",
-            f"translated {len(english)} subtitle cues to {self.target_language}",
+            f"{action} {len(source)} cues from {self.source_language} to {self.target_language}",
             (translated_path, bilingual_path),
         )
 

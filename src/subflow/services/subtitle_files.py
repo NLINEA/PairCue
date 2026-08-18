@@ -181,20 +181,30 @@ def translated_subtitles(
 
 
 def bilingual_subtitles(
-    source: list[srt.Subtitle], translated: list[srt.Subtitle]
+    source: list[srt.Subtitle],
+    translated: list[srt.Subtitle],
+    *,
+    order: str = "target-first",
 ) -> list[srt.Subtitle]:
+    if order not in {"target-first", "source-first"}:
+        raise ValueError("bilingual order must be target-first or source-first")
     if len(source) != len(translated):
         raise ValueError("source and translated subtitle counts differ")
     output: list[srt.Subtitle] = []
-    for index, (english, chinese) in enumerate(zip(source, translated, strict=True), start=1):
-        if english.start != chinese.start or english.end != chinese.end:
+    for index, (source_cue, target_cue) in enumerate(zip(source, translated, strict=True), start=1):
+        if source_cue.start != target_cue.start or source_cue.end != target_cue.end:
             raise ValueError("source and translated timings differ")
+        lines = (
+            (target_cue.content.strip(), source_cue.content.strip())
+            if order == "target-first"
+            else (source_cue.content.strip(), target_cue.content.strip())
+        )
         output.append(
             srt.Subtitle(
                 index=index,
-                start=english.start,
-                end=english.end,
-                content=f"{chinese.content.strip()}\n{english.content.strip()}",
+                start=source_cue.start,
+                end=source_cue.end,
+                content="\n".join(lines),
             )
         )
     return output

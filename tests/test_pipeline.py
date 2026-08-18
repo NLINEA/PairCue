@@ -46,22 +46,36 @@ class PartialTranslator(FullTranslator):
         return {}
 
 
+class RecordingSynchronizer:
+    def __init__(self) -> None:
+        self.paths: list[Path] = []
+
+    def sync(self, media_path: Path, subtitle_path: Path) -> bool:
+        self.paths.append(subtitle_path)
+        return True
+
+
 def _pipeline(
     tmp_path: Path,
     translator: object,
     *,
+    source_language: str = "en",
     target_language: str = "zh-TW",
+    bilingual_order: str = "target-first",
     downloader: object | None = None,
+    synchronizer: object | None = None,
 ) -> SubtitlePipeline:
     return SubtitlePipeline(
         media_root=tmp_path,
         state=StateStore(tmp_path / "state" / "subflow.sqlite3"),
         downloader=downloader or NoopDownloader(),  # type: ignore[arg-type]
         extractor=NoopExtractor(),  # type: ignore[arg-type]
-        synchronizer=None,
+        synchronizer=synchronizer,  # type: ignore[arg-type]
         translator=translator,  # type: ignore[arg-type]
         glossary=GlossaryStore(tmp_path / "state" / "glossaries"),
+        source_language=source_language,
         target_language=target_language,
+        bilingual_order=bilingual_order,
     )
 
 
@@ -73,6 +87,16 @@ def _media(tmp_path: Path) -> MediaItem:
         encoding="utf-8",
     )
     return MediaItem("1", "movie", media, "Movie")
+
+
+def _media_with_source(tmp_path: Path, language: str, text: str) -> MediaItem:
+    media = tmp_path / "Lesson.mkv"
+    media.write_bytes(b"fake media")
+    (tmp_path / f"Lesson.{language}.srt").write_text(
+        f"1\n00:00:00,000 --> 00:00:01,000\n{text}\n\n",
+        encoding="utf-8",
+    )
+    return MediaItem("2", "movie", media, "Lesson")
 
 
 def test_pipeline_writes_complete_atomic_outputs(tmp_path: Path) -> None:
@@ -90,6 +114,19 @@ def test_pipeline_does_not_publish_partial_translation(tmp_path: Path) -> None:
     assert result.status == "failed"
     assert not (tmp_path / "Movie.zh-TW.srt").exists()
     assert not (tmp_path / "Movie.zh-TW.cc.srt").exists()
+
+
+def test_target_only_file_does_not_count_as_complete_bilingual_output(tmp_path: Path) -> None:
+    item = _media(tmp_path)
+    (tmp_path / "Movie.zh-TW.srt").write_text(
+        "1\n00:00:00,000 --> 00:00:01,000\n舊字幕\n\n",
+        encoding="utf-8",
+    )
+
+    result = _pipeline(tmp_path, FullTranslator()).process(item)
+
+    assert result.status == "completed"
+    assert (tmp_path / "Movie.zh-TW.cc.srt").exists()
 
 
 def test_pipeline_uses_custom_target_language_in_output_names(tmp_path: Path) -> None:
@@ -114,3 +151,24 @@ def test_download_only_mode_requests_the_custom_target(tmp_path: Path) -> None:
     assert result.status == "completed"
     assert downloader.requests == [{"ja"}]
     assert result.outputs == (tmp_path / "Movie.ja.srt",)
+
+
+def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: Path) -> None:
+    synchronizer = RecordingSynchronizer()
+    item = _media_with_source(tmp_path, "ja", "こんにちは")
+
+    result = _pipeline(
+        tmp_path,
+        FullTranslator(),
+        source_language="ja",
+        target_language="en",
+        bilingual_order="source-first",
+        synchronizer=synchronizer,
+    ).process(item)
+
+    assert result.status == "completed"
+    assert result.message == "aligned and translated 1 cues from ja to en"
+    assert synchronizer.paths == [tmp_path / "Lesson.ja.srt"]
+    assert (tmp_path / "Lesson.en.srt").exists()
+    bilingual = (tmp_path / "Lesson.en.cc.srt").read_text(encoding="utf-8")
+    assert "こんにちは\n翻譯 0" in bilingual

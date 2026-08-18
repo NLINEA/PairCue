@@ -12,6 +12,9 @@ LANGUAGE_NAMES = {
     "zh-Hant": "Traditional Chinese",
     "zh-CN": "Simplified Chinese (Mainland China)",
     "zh-Hans": "Simplified Chinese",
+    "en": "English",
+    "en-US": "English (United States)",
+    "en-GB": "English (United Kingdom)",
     "ja": "Japanese",
     "ko": "Korean",
     "es": "Spanish",
@@ -51,7 +54,7 @@ def canonicalize_language_tag(value: str) -> str:
 
     raw = value.strip()
     if not raw or not LANGUAGE_TAG.fullmatch(raw):
-        raise ValueError("target language must be a valid BCP-47 language tag")
+        raise ValueError("language must be a valid BCP-47 language tag")
     parts = raw.split("-")
     normalized = [parts[0].lower()]
     for part in parts[1:]:

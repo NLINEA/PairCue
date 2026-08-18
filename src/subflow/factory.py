@@ -53,6 +53,8 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
             primary,
             fallback=fallback,
             batch_size=settings.translation_batch_size,
+            source_language=settings.source_language,
+            source_language_name=settings.effective_source_language_name,
             target_language=settings.target_language,
             target_language_name=settings.effective_target_language_name,
             target_language_style=settings.target_language_style,
@@ -66,8 +68,10 @@ def build_runtime(settings: SubFlowSettings) -> CoreRuntime:
         synchronizer=synchronizer,
         translator=translator,
         glossary=glossary,
-        clean_english_output=settings.clean_english_output,
+        clean_source_output=settings.clean_source_output,
+        source_language=settings.source_language,
         target_language=settings.target_language,
+        bilingual_order=settings.bilingual_order,
     )
     plex = PlexClient(
         base_url=settings.plex_url,

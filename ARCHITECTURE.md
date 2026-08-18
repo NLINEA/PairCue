@@ -21,7 +21,7 @@ flowchart LR
     Pipeline --> Provider["Subliminal provider adapter"]
     Pipeline --> Sync["ffsubsync adapter"]
     Pipeline --> Translate["Validated translator + fallback"]
-    Pipeline --> Output["Atomic .en / target / target.cc files"]
+    Pipeline --> Output["Atomic source / target / bilingual files"]
     Pipeline --> State["SQLite state"]
 
     Browser["Optional browser UI"] --> DownloadAPI["Isolated Download Station app"]
@@ -36,14 +36,14 @@ They use different bearer tokens and ports.
 
 1. Resolve the Plex path under the configured media root; reject paths outside it.
 2. Deduplicate the queue and take a lock for the media path.
-3. Extract text-based embedded subtitles matching English or the configured target language.
-4. Download an English base when required and optionally synchronize it.
+3. Extract text-based embedded subtitles matching the configured source or target language.
+4. Download the configured source subtitle when required and synchronize it against the media.
 5. Remove non-dialogue cues from the in-memory translation source.
 6. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
    once with non-empty text. Use the fallback provider only after the primary exhausts its retries.
 7. Validate complete coverage across the whole file.
-8. Write bilingual output first and the configured target-language file last using atomic
-   replacements. The target file is the completion marker.
+8. Write the target-language output and then the bilingual learning output using atomic
+   replacements. The bilingual file is the completion marker.
 9. Record the result in SQLite.
 
 ## Trade-offs
@@ -61,6 +61,6 @@ They use different bearer tokens and ports.
 
 - Incremental Plex pagination and event replay for very large libraries.
 - Translation cache keyed by source text, model, prompt version, and glossary version.
-- Configurable English source variants and non-English source languages.
+- Per-library and per-series language-learning profiles.
 - Metrics, structured logs, and an operator dashboard.
 - Multiple workers backed by a durable external queue.

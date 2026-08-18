@@ -1,24 +1,27 @@
 # SubFlow
 
-SubFlow is a Plex-first subtitle automation companion. It finds or extracts an English subtitle,
-synchronizes it, translates every cue with an OpenAI-compatible model, and writes Plex-friendly
-target-language and bilingual sidecars. Traditional Chinese for Taiwan is the default, but the
-output language is configurable.
+**Automatically aligned bilingual subtitles for Plex — learn English or another language while
+you watch.**
+
+SubFlow creates automatically aligned bilingual subtitles for Plex. Choose a source language and a
+learning language; SubFlow finds or extracts the source subtitle, synchronizes it to the media,
+translates every cue with an OpenAI-compatible model, and writes Plex-friendly single-language and
+bilingual sidecars. English to Traditional Chinese is the default, but neither language is fixed.
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
 ## What it writes
 
-- `Movie.en.srt` — English base when one is downloaded or extracted.
-- `Movie.<language>.srt` — translated target language.
-- `Movie.<language>.cc.srt` — target language above English.
+- `Movie.<source>.srt` — synchronized source subtitle when one is downloaded or extracted.
+- `Movie.<target>.srt` — translated learning language.
+- `Movie.<target>.cc.srt` — both languages on the same cue timing.
 
 With the default `zh-TW` setting, the last two files are `Movie.zh-TW.srt` and
 `Movie.zh-TW.cc.srt`.
 
-Translation is all-or-nothing: SubFlow does not publish an output when even one cue is missing.
-By default, the English sidecar is also rewritten atomically with non-dialogue cues removed; set
-`SUBFLOW_CLEAN_ENGLISH_OUTPUT=false` to preserve it exactly.
+Translation is all-or-nothing: SubFlow does not publish bilingual output when even one cue is
+missing. By default, the source sidecar is also rewritten atomically with non-dialogue cues removed;
+set `SUBFLOW_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 
 ## Quick start
 
@@ -44,26 +47,44 @@ can be configured with `SUBFLOW_TRANSLATION_BASE_URL`, `SUBFLOW_TRANSLATION_API_
 Subtitle text is sent to the configured translation provider. Users are responsible for reviewing
 that provider's privacy policy and terms.
 
-## Output language
+## Language-learning pairs
 
-Set a [BCP-47 language tag](https://www.rfc-editor.org/info/bcp47) in `subflow.env`:
+Set source and target [BCP-47 language tags](https://www.rfc-editor.org/info/bcp47) in
+`subflow.env`. For Japanese dialogue with English learning subtitles:
 
 ```dotenv
-SUBFLOW_TARGET_LANGUAGE=zh-HK
+SUBFLOW_SOURCE_LANGUAGE=ja
+SUBFLOW_TARGET_LANGUAGE=en
+SUBFLOW_BILINGUAL_ORDER=target-first
 ```
 
 Common examples include `zh-TW`, `zh-HK`, `zh-Hant`, `zh-CN`, `ja`, `ko`, `es`, `fr`, and
-`pt-BR`. Common language names are detected automatically. For a language or regional style that
-needs more direction, add:
+`pt-BR`. Language names are detected automatically. `target-first` places the learning language on
+top; use `source-first` to reverse the two lines. For a language or regional style that needs more
+direction, add:
 
 ```dotenv
 SUBFLOW_TARGET_LANGUAGE_NAME=Traditional Chinese (Hong Kong)
 SUBFLOW_TARGET_LANGUAGE_STYLE=natural Cantonese-influenced Hong Kong wording suitable for subtitles
 ```
 
-The beta uses English as its source language. A target beginning with `en` is therefore rejected.
-When AI translation is disabled, SubFlow asks subtitle providers for the configured target language;
-Chinese targets can also fall back to safe OpenCC script conversion.
+English can be either the source or target, so pairs such as `en → zh-HK`, `ja → en`, `ko → en`,
+and `es → fr` are supported. Source and target must differ. When AI translation is disabled,
+SubFlow asks subtitle providers for the configured target language; Chinese targets can also fall
+back to safe OpenCC script conversion.
+
+| Learning goal | Source | Target | Bilingual result |
+|---|---|---|---|
+| Learn English from Japanese media | `ja` | `en` | English + Japanese |
+| Learn Japanese with an English base | `en` | `ja` | Japanese + English |
+| Watch with Hong Kong Traditional Chinese | `en` | `zh-HK` | zh-HK + English |
+
+## Automatic synchronization
+
+With `SUBFLOW_SYNC_ENABLED=true` (the default), SubFlow runs ffsubsync against the media before
+translation. The translated and bilingual cues inherit the synchronized source timings exactly.
+ffsubsync's low-confidence safeguard is enabled, and replacement is atomic; if synchronization
+cannot be confirmed, SubFlow keeps the original timing and continues translation.
 
 ## Optional Download Station UI
 
@@ -107,9 +128,9 @@ The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Project status
 
-The first beta intentionally targets one Plex server, one worker, and English source subtitles.
-Planned follow-ups include a translation cache, configurable source languages, richer status
-reporting, and faster incremental Plex scans.
+The first beta intentionally targets one Plex server and one worker. Planned follow-ups include a
+translation cache, per-library language-learning profiles, richer status reporting, and faster
+incremental Plex scans.
 
 SubFlow is an independent project and is not affiliated with Plex, Synology, subtitle providers, or
 translation model providers.

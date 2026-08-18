@@ -51,6 +51,9 @@ def test_translation_and_bilingual_require_exact_coverage() -> None:
     assert chinese[0].content == "你好"
     assert bilingual[0].content == "你好\nHello"
 
+    source_first = bilingual_subtitles(source, chinese, order="source-first")
+    assert source_first[0].content == "Hello\n你好"
+
 
 def test_language_enum_uses_plex_sidecar_names() -> None:
     assert SubtitleLanguage.TRADITIONAL_CHINESE.value == "zh-TW"

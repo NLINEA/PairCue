@@ -30,16 +30,30 @@ def test_target_language_is_canonicalized_and_named() -> None:
     assert settings.effective_target_language_name == "Traditional Chinese (Hong Kong)"
 
 
+def test_english_can_be_the_target_for_a_different_source_language() -> None:
+    settings = SubFlowSettings(source_language="JA", target_language="en")
+
+    assert settings.source_language == "ja"
+    assert settings.effective_source_language_name == "Japanese"
+    assert settings.target_language == "en"
+    assert settings.effective_target_language_name == "English"
+
+
 def test_custom_target_language_name_is_supported() -> None:
     settings = SubFlowSettings(target_language="gd", target_language_name="Scottish Gaelic")
 
     assert settings.effective_target_language_name == "Scottish Gaelic"
 
 
-@pytest.mark.parametrize("language", ["../../ja", "en", "en-GB"])
-def test_invalid_or_english_target_language_is_rejected(language: str) -> None:
-    with pytest.raises(ValidationError, match="target language"):
+@pytest.mark.parametrize("language", ["../../ja", "not_a_language"])
+def test_invalid_language_tag_is_rejected(language: str) -> None:
+    with pytest.raises(ValidationError, match="valid BCP-47"):
         SubFlowSettings(target_language=language)
+
+
+def test_source_and_target_languages_must_differ() -> None:
+    with pytest.raises(ValidationError, match="must differ"):
+        SubFlowSettings(source_language="en", target_language="EN")
 
 
 def test_empty_target_language_style_is_rejected() -> None:

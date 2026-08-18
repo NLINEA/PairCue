@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, ValidationInfo, field_validator, model_validator
@@ -37,8 +38,10 @@ class SubFlowSettings(BaseSettings):
     worker_queue_size: int = Field(default=1000, ge=1, le=10000)
     providers: str = "gestdown,tvsubtitles,opensubtitles"
     sync_enabled: bool = True
-    clean_english_output: bool = True
+    clean_source_output: bool = True
 
+    source_language: str = "en"
+    source_language_name: str = Field(default="", max_length=80)
     target_language: str = "zh-TW"
     target_language_name: str = Field(default="", max_length=80)
     target_language_style: str = Field(
@@ -46,6 +49,7 @@ class SubFlowSettings(BaseSettings):
         min_length=1,
         max_length=200,
     )
+    bilingual_order: Literal["target-first", "source-first"] = "target-first"
 
     translation_enabled: bool = False
     translation_base_url: str = "https://api.z.ai/api/coding/paas/v4"
@@ -80,15 +84,12 @@ class SubFlowSettings(BaseSettings):
             raise ValueError("credentials must not be embedded in service URLs")
         return value.rstrip("/")
 
-    @field_validator("target_language")
+    @field_validator("source_language", "target_language")
     @classmethod
-    def validate_target_language(cls, value: str) -> str:
-        tag = canonicalize_language_tag(value)
-        if tag.split("-", 1)[0] == "en":
-            raise ValueError("target language must differ from the English source language")
-        return tag
+    def validate_language(cls, value: str) -> str:
+        return canonicalize_language_tag(value)
 
-    @field_validator("target_language_name", "target_language_style")
+    @field_validator("source_language_name", "target_language_name", "target_language_style")
     @classmethod
     def validate_translation_prompt_setting(cls, value: str, info: ValidationInfo) -> str:
         value = value.strip()
@@ -106,6 +107,8 @@ class SubFlowSettings(BaseSettings):
             raise ValueError("SUBFLOW_API_TOKEN must contain at least 32 characters")
         if self.translation_enabled and not _secret_value(self.translation_api_key):
             raise ValueError("translation is enabled but SUBFLOW_TRANSLATION_API_KEY is empty")
+        if self.source_language.casefold() == self.target_language.casefold():
+            raise ValueError("source and target languages must differ")
         return self
 
     @property
@@ -120,6 +123,10 @@ class SubFlowSettings(BaseSettings):
     @property
     def effective_target_language_name(self) -> str:
         return self.target_language_name or language_name(self.target_language)
+
+    @property
+    def effective_source_language_name(self) -> str:
+        return self.source_language_name or language_name(self.source_language)
 
 
 class DownloadStationSettings(BaseSettings):

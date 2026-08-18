@@ -23,12 +23,14 @@ class FakeProvider:
         *,
         context: str,
         glossary: dict[str, str],
+        source_language: str,
+        source_language_name: str,
         target_language: str,
         target_language_name: str,
         target_language_style: str,
     ) -> dict[int, str]:
         self.calls += 1
-        self.languages.append(target_language)
+        self.languages.append(f"{source_language}->{target_language}")
         if self.fail:
             raise TranslationError("failed")
         return {cue_id: f"中:{text}" for cue_id, text in cues.items()}
@@ -53,7 +55,8 @@ def test_fallback_is_used_only_after_primary_fails() -> None:
         primary,  # type: ignore[arg-type]
         fallback=fallback,  # type: ignore[arg-type]
         batch_size=2,
-        target_language="ja",
+        source_language="ko",
+        target_language="en",
     )
 
     result = translator.translate_all(_cues(3), context="Movie")
@@ -61,8 +64,8 @@ def test_fallback_is_used_only_after_primary_fails() -> None:
     assert set(result) == {0, 1, 2}
     assert primary.calls == 2
     assert fallback.calls == 2
-    assert primary.languages == ["ja", "ja"]
-    assert fallback.languages == ["ja", "ja"]
+    assert primary.languages == ["ko->en", "ko->en"]
+    assert fallback.languages == ["ko->en", "ko->en"]
 
 
 def test_incomplete_provider_output_is_rejected() -> None:
@@ -73,6 +76,8 @@ def test_incomplete_provider_output_is_rejected() -> None:
             *,
             context: str,
             glossary: dict[str, str],
+            source_language: str,
+            source_language_name: str,
             target_language: str,
             target_language_name: str,
             target_language_style: str,
