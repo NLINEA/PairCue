@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+MediaType = Literal["movie", "episode"]
+
+
+@dataclass(frozen=True, slots=True)
+class MediaItem:
+    rating_key: str
+    media_type: MediaType
+    path: Path
+    title: str
+    year: int | None = None
+    show_title: str = ""
+    season: int | None = None
+    episode: int | None = None
+    library_key: str = ""
+
+    @property
+    def context_label(self) -> str:
+        if self.media_type == "episode":
+            show = self.show_title or self.title
+            return f"{show} S{self.season or 0:02d}E{self.episode or 0:02d}"
+        return f"{self.title} ({self.year})" if self.year else self.title
+
+    @property
+    def queue_key(self) -> str:
+        return str(self.path.resolve(strict=False))
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessResult:
+    status: Literal["skipped", "completed", "failed"]
+    message: str
+    outputs: tuple[Path, ...] = ()

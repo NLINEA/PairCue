@@ -1,0 +1,48 @@
+name: subflow
+
+services:
+  core:
+    build: .
+    image: subflow:0.1.0-beta.1
+    restart: unless-stopped
+    env_file: subflow.env
+    user: "${PUID:-10001}:${PGID:-10001}"
+    volumes:
+      - "${MEDIA_PATH:?Set MEDIA_PATH}:/media:rw"
+      - subflow-state:/state
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9292/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  downloads:
+    profiles: ["downloads"]
+    build: .
+    image: subflow:0.1.0-beta.1
+    command: ["subflow", "downloads"]
+    restart: unless-stopped
+    env_file: downloads.env
+    user: "${PUID:-10001}:${PGID:-10001}"
+    ports:
+      - "127.0.0.1:${DOWNLOADS_PORT:-9293}:9293"
+    volumes:
+      - "${TORRENT_WATCH_PATH:?Set TORRENT_WATCH_PATH}:/torrents:rw"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  subflow-state:
