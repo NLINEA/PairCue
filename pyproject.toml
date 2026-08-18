@@ -35,7 +35,7 @@ dependencies = [
   "charset-normalizer>=3.4,<4",
   "fastapi>=0.128,<1",
   "httpx>=0.28,<1",
-  "numpy>=2.0,<2.3",
+  "numpy>=2.0,<2.5",
   "opencc-python-reimplemented>=0.1.7,<1",
   "pydantic-settings>=2.12,<3",
   "python-multipart>=0.0.20,<1",
@@ -52,11 +52,11 @@ Changelog = "https://github.com/zacklam1120-spec/PairCue/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = [
   "build>=1.3,<2",
-  "mypy>=1.17,<2",
+  "mypy>=1.17,<3",
   "packaging>=24,<27",
   "pip-audit>=2.9,<3",
   "pytest>=9.0.3,<10",
-  "pytest-cov>=6.2,<7",
+  "pytest-cov>=6.2,<8",
   "ruff>=0.12,<1",
 ]
 release = [
