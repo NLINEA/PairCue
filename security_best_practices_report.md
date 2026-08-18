@@ -119,8 +119,12 @@ The new gate is deliberately narrow:
 - GitHub Dependabot alerts: zero open at review time.
 - GitHub secret-scanning alerts: zero open at review time; push protection is enabled.
 - GitHub CodeQL default setup was enabled with extended queries for Python, JavaScript/TypeScript,
-  and Actions. Its initial scan completed successfully. The new commit must be rescanned and every
-  remaining result fixed or documented and dismissed before the next release is considered done.
+  and Actions. The current commit passed all three analyses with zero open alerts. Ten reviewed
+  results were dismissed with audit comments: eight intentional local-user path selections, one
+  intentionally player-readable subtitle permission, and one test-only string assertion. No query
+  was disabled.
+- GitHub CI passed Python 3.11, 3.12, and 3.13 tests, container build, runtime licenses, dependency
+  audit, secret/history scan, and the pinned-action workflow on the current commit.
 
 ## Residual risks and release gates
 
