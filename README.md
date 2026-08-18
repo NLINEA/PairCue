@@ -1,20 +1,40 @@
 # PairCue
 
-**Two languages. One perfectly timed track.**
+**Your media. Two languages. One shared timeline.**
 
-Turn a private movie library into a language-learning library. PairCue finds or generates source
-subtitles, aligns them to the media, translates them, and writes one reusable bilingual SRT for
-Plex, Jellyfin, Emby, Kodi, Infuse, VLC, or a plain media folder.
+PairCue turns Plex, Jellyfin, Emby, or any media folder into a language-learning library. It finds,
+downloads, or generates source subtitles, creates the language you want to learn, aligns both
+tracks conservatively, and saves an ordinary bilingual `.mul.srt` beside your video.
 
-Subtitle managers stop after finding one subtitle. Browser learning extensions stop at supported
-streaming sites. PairCue is the bridge: automatic language-learning tracks for media you already
-own, saved as ordinary files that remain usable in any player.
+No custom player. No browser extension. No PairCue account. The finished subtitle remains yours
+and works with Plex, Jellyfin, Emby, Kodi, Infuse, VLC, and other players that read SRT files.
 
-`existing subtitle → official search → speech transcription → translation → bilingual SRT`
+[Download the desktop beta](../../releases/latest) · [Make your first subtitle](#your-first-run) ·
+[Automate a library](#automate-the-library-after-one-video-works)
 
-Choose any source and learning language; English to Traditional Chinese is only the default, not a
-limitation. PairCue creates standard sidecar files instead of requiring a browser extension or a
-custom video player.
+![PairCue asks for the media platform before any technical settings](docs/images/paircue-platform-first.png)
+
+## Start without setup jargon
+
+1. Open PairCue and choose where you watch: **Plex, Jellyfin, Emby, or Other players**.
+2. Choose your first result: combine two SRTs, try one video, or automate a library.
+3. Pick any spoken and learning languages. PairCue reveals only the details that result needs.
+
+The fastest path is **Choose two SRTs**. It needs no server address, API key, media scan, account,
+or upload. PairCue matches the two files by time and refuses to publish a low-confidence pairing.
+
+## What makes it different
+
+- **Built for bilingual learning tracks.** The useful output is two languages together, not merely
+  another downloaded subtitle.
+- **Bring any language pair.** English and Chinese are defaults, not limits; source and learning
+  languages can be changed independently with BCP-47 tags such as `ja`, `en`, `zh-HK`, or `es`.
+- **Use the library you already own.** One standard sidecar works across media servers and local
+  players instead of locking the result to one streaming website.
+- **Private by default.** Setup is local, there is no analytics SDK, and media is sent nowhere
+  unless you explicitly enable a translation or transcription provider.
+
+`existing subtitles → official search → speech transcription → translation → bilingual SRT`
 
 > Beta software. Back up a small test library before enabling it on your full media collection.
 
@@ -32,7 +52,8 @@ your computer, unzip it, and open **PairCue**:
 
 These early beta apps are not yet signed by Apple or Microsoft. On macOS, right-click PairCue and
 choose **Open** the first time. Windows may show an unrecognized-publisher warning. Only download
-PairCue from this repository's Releases page.
+PairCue from this repository's Releases page. Every tagged release also includes `SHA256SUMS.txt`
+so advanced users can verify that an archive was downloaded intact.
 
 ## Your first run
 
@@ -45,6 +66,8 @@ you already have zero, one, or two subtitle tracks. Search and translation field
 they are relevant. Press **Save and choose a video**, then select one movie or episode in the system
 file window. Progress and the final result stay visible on the setup page; a successful bilingual
 subtitle is revealed in Finder or your file manager.
+
+![PairCue offers a zero-setup first result after the platform choice](docs/images/paircue-first-result.png)
 
 If you already have two SRT files, choose **Choose two SRTs** on the second screen. Choose the
 spoken subtitle first and the learning subtitle second. PairCue creates and reveals a new
@@ -337,6 +360,15 @@ magnet or upload a small `.torrent` file.
 - The Docker services drop Linux capabilities and run without root privileges.
 
 See [SECURITY.md](SECURITY.md) for private vulnerability reporting guidance.
+
+## Feedback is welcome
+
+You do not need to diagnose a technical cause. Use the guided
+[bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml) to say
+what you tried and what happened, or the
+[idea form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=feature_request.yml) to
+describe a result that would make language learning easier. Never include credentials, private
+library paths, or copyrighted subtitle text in a public issue.
 
 ## Development
 

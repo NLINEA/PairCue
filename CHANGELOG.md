@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0b11 - 2026-08-18
+
+- Add a real platform-first product screenshot and a shorter five-second GitHub introduction so
+  first-time visitors can understand PairCue before reading installation details.
+- Keep the private setup token in a URL fragment only, remove it from browser history immediately,
+  and send it to the local setup server through the Authorization header rather than request URLs.
+- Stop persisting the optional Download Station token in browser storage; it now stays in page
+  memory and must be pasted again after a refresh.
+- Add response-header clickjacking protection and a server-delivered Content Security Policy to
+  the visual setup wizard.
+- Publish SHA-256 checksums alongside every tagged desktop release archive.
+
 ## 0.1.0b10 - 2026-08-18
 
 - Turn first-run setup into three progressive stages: platform, first result, then only the

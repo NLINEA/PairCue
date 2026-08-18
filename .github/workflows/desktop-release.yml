@@ -86,6 +86,9 @@ jobs:
         with:
           path: release
           merge-multiple: true
+      - name: Create SHA-256 checksums
+        working-directory: release
+        run: sha256sum PairCue-* > SHA256SUMS.txt
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

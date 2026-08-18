@@ -40,6 +40,16 @@ def test_download_tasks_require_separate_token(tmp_path: Path) -> None:
     assert response.json()["tasks"][0]["title"] == "safe title"
 
 
+def test_download_page_does_not_persist_its_token_in_browser_storage(tmp_path: Path) -> None:
+    backend = FakeDownloadStation()
+    with _client(tmp_path, backend) as client:
+        javascript = client.get("/assets/downloads.js").text
+
+    assert "sessionStorage" not in javascript
+    assert "localStorage" not in javascript
+    assert "Authorization" in javascript
+
+
 def test_magnet_is_validated(tmp_path: Path) -> None:
     backend = FakeDownloadStation()
     with _client(tmp_path, backend) as client:

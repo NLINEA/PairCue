@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paircue"
-version = "0.1.0b10"
+version = "0.1.0b11"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,6 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Multimedia :: Video",
 ]
+
 dependencies = [
   "charset-normalizer>=3.4,<4",
   "fastapi>=0.128,<1",
@@ -41,6 +42,12 @@ dependencies = [
   "srt>=3.5.3,<4",
   "uvicorn>=0.35,<1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/zacklam1120-spec/PairCue"
+Repository = "https://github.com/zacklam1120-spec/PairCue"
+Issues = "https://github.com/zacklam1120-spec/PairCue/issues"
+Changelog = "https://github.com/zacklam1120-spec/PairCue/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

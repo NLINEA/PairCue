@@ -16,9 +16,11 @@ PairCue is designed for a trusted home network. Do not expose either service dir
 internet. Use a VPN or an authenticated reverse proxy and keep the bearer tokens separate.
 
 The visual setup wizard binds to a random `127.0.0.1` port and accepts configuration writes only
-with its one-time URL token and matching local Origin. It loads no remote assets. Generated
-`paircue.env` files and automatic backups use owner-only permissions; they contain secrets and must
-never be committed or shared.
+with its one-time bearer token and matching local Origin. Desktop launch places that token in a URL
+fragment, which is not sent in the HTTP request; the page removes the fragment from browser history
+and keeps the token in memory. It loads no remote assets. Generated `paircue.env` files and
+automatic backups use owner-only permissions; they contain secrets and must never be committed or
+shared.
 
 Desktop Quick Pair accepts actions only from the tokenized same-origin setup page. Its two SRT
 inputs are read directly from paths returned by native operating-system file windows, are limited

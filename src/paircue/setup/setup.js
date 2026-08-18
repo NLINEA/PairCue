@@ -6,6 +6,7 @@ const preview = byId("config-preview");
 const formError = byId("form-error");
 const actionStatus = byId("action-status");
 const apiToken = randomToken();
+const setupToken = readSetupToken();
 let desktopApp = false;
 
 const platformNames = {
@@ -54,6 +55,21 @@ function randomToken() {
   crypto.getRandomValues(bytes);
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function readSetupToken() {
+  if (!window.location.protocol.startsWith("http")) {
+    return "";
+  }
+  const token = new URLSearchParams(window.location.hash.slice(1)).get("token") || "";
+  if (token) {
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  }
+  return token;
+}
+
+function authorizedHeaders(extra = {}) {
+  return { ...extra, Authorization: `Bearer ${setupToken}` };
 }
 
 function secretValue(id, maskSecrets) {
@@ -446,8 +462,7 @@ async function saveConfig() {
   if (config === null) {
     return;
   }
-  const token = new URLSearchParams(window.location.search).get("token");
-  if (!window.location.protocol.startsWith("http") || !token) {
+  if (!window.location.protocol.startsWith("http") || !setupToken) {
     downloadConfigFile(config);
     return;
   }
@@ -457,9 +472,9 @@ async function saveConfig() {
     if (desktopApp && selectedMode() === "library") {
       button.textContent = "Checking platform…";
       actionStatus.textContent = `Connecting to ${selectedPlatform()}…`;
-      const testResponse = await fetch(`/test-platform?token=${encodeURIComponent(token)}`, {
+      const testResponse = await fetch("/test-platform", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authorizedHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ config, mode: selectedMode() }),
       });
       const testPayload = await testResponse.json();
@@ -469,9 +484,9 @@ async function saveConfig() {
       actionStatus.textContent = testPayload.message;
     }
     button.textContent = "Saving…";
-    const response = await fetch(`/config?token=${encodeURIComponent(token)}`, {
+    const response = await fetch("/config", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authorizedHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ config, mode: selectedMode() }),
     });
     const payload = await response.json();
@@ -484,10 +499,10 @@ async function saveConfig() {
       : `Saved ${payload.filename} in ${payload.location}.`;
     if (selectedMode() === "single") {
       actionStatus.textContent = `Saved ${payload.filename}. Look for the video file window.`;
-      pollProgress(token);
+      pollProgress();
     } else if (desktopApp) {
       actionStatus.textContent = "Saved. PairCue is opening your private dashboard…";
-      pollProgress(token);
+      pollProgress();
     }
   } catch (error) {
     button.disabled = false;
@@ -549,11 +564,11 @@ function renderProgress(payload) {
   }
 }
 
-async function pollProgress(token) {
+async function pollProgress() {
   while (true) {
     try {
-      const response = await fetch(`/progress?token=${encodeURIComponent(token)}`, {
-        headers: { Accept: "application/json" },
+      const response = await fetch("/progress", {
+        headers: authorizedHeaders({ Accept: "application/json" }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -620,16 +635,16 @@ async function updateAppContext() {
 }
 
 async function chooseMediaFolder() {
-  const token = new URLSearchParams(window.location.search).get("token");
-  if (!desktopApp || !token) {
+  if (!desktopApp || !setupToken) {
     return;
   }
   const button = byId("choose-media-folder");
   button.disabled = true;
   button.textContent = "Choosing…";
   try {
-    const response = await fetch(`/choose-folder?token=${encodeURIComponent(token)}`, {
+    const response = await fetch("/choose-folder", {
       method: "POST",
+      headers: authorizedHeaders(),
     });
     const payload = await response.json();
     if (!response.ok) {
@@ -649,8 +664,7 @@ async function chooseMediaFolder() {
 }
 
 async function quickPairSubtitles() {
-  const token = new URLSearchParams(window.location.search).get("token");
-  if (!desktopApp || !token) {
+  if (!desktopApp || !setupToken) {
     return;
   }
   const button = byId("quick-pair");
@@ -662,8 +676,8 @@ async function quickPairSubtitles() {
   try {
     const order = value("quick-pair-order");
     const response = await fetch(
-      `/quick-pair?token=${encodeURIComponent(token)}&order=${encodeURIComponent(order)}`,
-      { method: "POST" },
+      `/quick-pair?order=${encodeURIComponent(order)}`,
+      { method: "POST", headers: authorizedHeaders() },
     );
     const payload = await response.json();
     if (!response.ok) {

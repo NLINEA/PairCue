@@ -37,27 +37,39 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
             readiness = client.get("/readiness")
             context = client.get("/context")
             forbidden = client.post(
-                "/config?token=wrong",
-                headers={"Origin": server.origin},
+                "/config",
+                headers={"Origin": server.origin, "Authorization": "Bearer wrong"},
                 json={"config": VALID_CONFIG},
             )
             saved = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": server.origin},
+                "/config",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
                 json={"config": VALID_CONFIG, "mode": "single"},
             )
-            wrong_progress = client.get("/progress?token=wrong")
-            pending_progress = client.get(f"/progress?token={server.token}")
+            wrong_progress = client.get(
+                "/progress", headers={"Authorization": "Bearer wrong"}
+            )
+            pending_progress = client.get(
+                "/progress", headers={"Authorization": f"Bearer {server.token}"}
+            )
             completed_output = tmp_path / "Private Movie.mul.srt"
             server.state.update_progress(
                 "completed",
                 "created bilingual subtitles",
                 (completed_output,),
             )
-            completed_progress = client.get(f"/progress?token={server.token}")
+            completed_progress = client.get(
+                "/progress", headers={"Authorization": f"Bearer {server.token}"}
+            )
             repeated = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": server.origin},
+                "/config",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
                 json={"config": VALID_CONFIG, "mode": "single"},
             )
     finally:
@@ -68,6 +80,8 @@ def test_setup_server_serves_local_assets_and_saves_with_backup(tmp_path: Path) 
     assert page.status_code == 200
     assert "PairCue Setup" in page.text
     assert page.headers["cache-control"] == "no-store"
+    assert page.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
     assert favicon.status_code == 200
     assert favicon.headers["content-type"] == "image/svg+xml"
     assert b"<svg" in favicon.content
@@ -138,16 +152,19 @@ def test_desktop_platform_is_checked_before_configuration_is_saved(tmp_path: Pat
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    headers = {"Origin": server.origin}
+    headers = {
+        "Origin": server.origin,
+        "Authorization": f"Bearer {server.token}",
+    }
     try:
         with httpx.Client(base_url=server.origin) as client:
             rejected = client.post(
-                f"/test-platform?token={server.token}",
+                "/test-platform",
                 headers=headers,
                 json={"config": VALID_CONFIG, "mode": "library"},
             )
             accepted = client.post(
-                f"/test-platform?token={server.token}",
+                "/test-platform",
                 headers=headers,
                 json={"config": VALID_CONFIG, "mode": "library"},
             )
@@ -179,10 +196,16 @@ def test_desktop_folder_chooser_requires_setup_origin_and_returns_selected_path(
     thread.start()
     try:
         with httpx.Client(base_url=server.origin) as client:
-            rejected = client.post(f"/choose-folder?token={server.token}")
+            rejected = client.post(
+                "/choose-folder",
+                headers={"Authorization": f"Bearer {server.token}"},
+            )
             selected = client.post(
-                f"/choose-folder?token={server.token}",
-                headers={"Origin": server.origin},
+                "/choose-folder",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
             )
     finally:
         server.shutdown()
@@ -215,15 +238,22 @@ def test_desktop_quick_pair_is_origin_protected_and_returns_only_the_output_name
     try:
         with httpx.Client(base_url=server.origin) as client:
             rejected = client.post(
-                f"/quick-pair?token={server.token}&order=target-first",
+                "/quick-pair?order=target-first",
+                headers={"Authorization": f"Bearer {server.token}"},
             )
             invalid = client.post(
-                f"/quick-pair?token={server.token}&order=unknown",
-                headers={"Origin": server.origin},
+                "/quick-pair?order=unknown",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
             )
             completed = client.post(
-                f"/quick-pair?token={server.token}&order=target-first",
-                headers={"Origin": server.origin},
+                "/quick-pair?order=target-first",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
             )
     finally:
         server.shutdown()
@@ -252,21 +282,31 @@ def test_setup_server_rejects_cross_origin_and_oversized_requests(tmp_path: Path
     try:
         with httpx.Client(base_url=server.origin) as client:
             cross_origin = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": "https://example.com"},
+                "/config",
+                headers={
+                    "Origin": "https://example.com",
+                    "Authorization": f"Bearer {server.token}",
+                },
                 json={"config": "unsafe\n"},
             )
             invalid_config = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": server.origin},
+                "/config",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
                 json={
                     "config": 'PAIRCUE_SOURCE_LANGUAGE="en"\n'
                     'PAIRCUE_TARGET_LANGUAGE="en"\n'
                 },
             )
             oversized = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": server.origin, "Content-Type": "application/json"},
+                "/config",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                    "Content-Type": "application/json",
+                },
                 content=b"x" * (64 * 1024 + 1),
             )
     finally:
@@ -291,8 +331,11 @@ def test_single_video_setup_remembers_platform_without_requiring_server_credenti
     try:
         with httpx.Client(base_url=server.origin) as client:
             saved = client.post(
-                f"/config?token={server.token}",
-                headers={"Origin": server.origin},
+                "/config",
+                headers={
+                    "Origin": server.origin,
+                    "Authorization": f"Bearer {server.token}",
+                },
                 json={"config": SINGLE_JELLYFIN_CONFIG, "mode": "single"},
             )
     finally:

@@ -1,0 +1,70 @@
+name: Something did not work
+description: Tell us what happened without needing to know the technical cause.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping PairCue improve. Never paste API keys, server tokens, private library paths, or copyrighted subtitles here.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where do you watch?
+      options:
+        - Plex
+        - Jellyfin
+        - Emby
+        - Kodi, Infuse, or VLC
+        - A NAS or media folder
+        - I did not reach this step
+    validations:
+      required: true
+  - type: dropdown
+    id: computer
+    attributes:
+      label: Computer running PairCue
+      options:
+        - macOS Apple silicon
+        - macOS Intel
+        - Windows
+        - Linux
+        - Docker or NAS
+        - Source install
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PairCue version
+      description: Find this in the downloaded archive name, release page, or `paircue --version`.
+      placeholder: 0.1.0b11
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to do?
+      placeholder: I chose Plex, then tried one Japanese video with English learning subtitles.
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened instead?
+      description: Include the exact safe error wording if one appeared. Remove secrets and private paths.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed API keys, tokens, private paths, logs with personal data, and subtitle content.
+          required: true

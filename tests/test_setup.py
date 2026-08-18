@@ -43,8 +43,12 @@ def test_visual_setup_is_self_contained_and_only_calls_its_local_origin() -> Non
     assert len(parser.ids) == len(set(parser.ids))
     assert "connect-src 'self'" in parser.csp
     assert not re.search(r"\b(XMLHttpRequest|WebSocket|sendBeacon)\b", javascript)
-    assert 'fetch(`/config?token=' in javascript
-    assert 'fetch(`/progress?token=' in javascript
+    assert 'fetch("/config"' in javascript
+    assert 'fetch("/progress"' in javascript
+    assert "Authorization: `Bearer ${setupToken}`" in javascript
+    assert "window.location.hash.slice(1)" in javascript
+    assert "window.history.replaceState" in javascript
+    assert "window.location.search).get(\"token\")" not in javascript
     assert not re.search(r"(?:src|href)=[\"']https?://", html)
 
 
@@ -62,9 +66,9 @@ def test_visual_setup_javascript_only_references_existing_elements() -> None:
     assert "docker compose --env-file paircue.env" in javascript
     assert "Your bilingual subtitle is ready" in javascript
     assert 'fetch("/context"' in javascript
-    assert 'fetch(`/test-platform?token=' in javascript
-    assert 'fetch(`/choose-folder?token=' in javascript
-    assert 'fetch(\n      `/quick-pair?token=' in javascript
+    assert 'fetch("/test-platform"' in javascript
+    assert 'fetch("/choose-folder"' in javascript
+    assert 'fetch(\n      `/quick-pair?order=' in javascript
     assert "No Docker or terminal command required." in javascript
 
 

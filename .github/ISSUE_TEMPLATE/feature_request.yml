@@ -1,0 +1,42 @@
+name: Suggest an improvement
+description: Describe the result you want PairCue to make easier.
+title: "[Idea]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas from language learners and home-media users are welcome. Describe the problem first; you do not need to design the technical solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is difficult today?
+      placeholder: I watch Korean shows in Jellyfin and want English plus Spanish subtitles, but...
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would a good result look like?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part is this about?
+      options:
+        - First-time setup
+        - Finding or downloading subtitles
+        - Generating subtitles from speech
+        - Translating or choosing languages
+        - Combining and timing two subtitle tracks
+        - Plex, Jellyfin, or Emby automation
+        - Kodi, Infuse, VLC, NAS, or local files
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do now?
+      description: Optional. Do not paste copyrighted subtitles or code from another product.

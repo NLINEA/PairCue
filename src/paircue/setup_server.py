@@ -128,8 +128,7 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
             return
         path = urlparse(self.path).path
         if path == "/progress":
-            supplied = parse_qs(urlparse(self.path).query).get("token", [""])[0]
-            if not hmac.compare_digest(supplied, self.server.token):
+            if not self._authorized():
                 self.send_error(HTTPStatus.FORBIDDEN)
                 return
             payload = self.server.state.progress_payload()
@@ -169,11 +168,10 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         parsed = urlparse(self.path)
-        supplied = parse_qs(parsed.query).get("token", [""])[0]
         if (
             parsed.path not in {"/config", "/test-platform", "/choose-folder", "/quick-pair"}
             or not self._trusted_host()
-            or not hmac.compare_digest(supplied, self.server.token)
+            or not self._authorized()
             or self.headers.get("Origin") != self.server.origin
         ):
             self.send_error(HTTPStatus.FORBIDDEN)
@@ -347,6 +345,14 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
         hostname = self.headers.get("Host", "").partition(":")[0]
         return hostname in {"127.0.0.1", "localhost"}
 
+    def _authorized(self) -> bool:
+        scheme, separator, supplied = self.headers.get("Authorization", "").partition(" ")
+        return (
+            separator == " "
+            and scheme.casefold() == "bearer"
+            and hmac.compare_digest(supplied, self.server.token)
+        )
+
     def _json_response(self, status: HTTPStatus, payload: dict[str, object]) -> None:
         content = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -359,8 +365,16 @@ class SetupRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'none'; script-src 'self'; style-src 'self'; "
+            "img-src 'self' data:; connect-src 'self'; object-src 'none'; "
+            "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        )
 
     def log_message(self, format: str, *args: object) -> None:
         return
@@ -387,7 +401,7 @@ def run_setup_wizard(
     )
     thread = threading.Thread(target=server.serve_forever, name="paircue-setup", daemon=True)
     thread.start()
-    url = f"{server.origin}/?token={server.token}"
+    url = f"{server.origin}/#token={server.token}"
     if webbrowser.open(url):
         print("PairCue Setup opened. Finish the three short steps in your browser.")
     else:

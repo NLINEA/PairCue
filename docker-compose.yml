@@ -3,7 +3,7 @@ name: paircue
 services:
   core:
     build: .
-    image: paircue:0.1.0-beta.10
+    image: paircue:0.1.0-beta.11
     restart: unless-stopped
     env_file: paircue.env
     user: "${PUID:-10001}:${PGID:-10001}"
@@ -29,7 +29,7 @@ services:
   downloads:
     profiles: ["downloads"]
     build: .
-    image: paircue:0.1.0-beta.10
+    image: paircue:0.1.0-beta.11
     command: ["paircue", "downloads"]
     restart: unless-stopped
     env_file: downloads.env
