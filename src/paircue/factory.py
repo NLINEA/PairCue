@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from paircue.config import PairCueSettings
 from paircue.runtime import CoreRuntime, JobCoordinator
-from paircue.services.downloader import SubliminalDownloader
+from paircue.services.downloader import (
+    DisabledSubtitleDownloader,
+    OpenSubtitlesDownloader,
+    SubtitleDownloader,
+)
 from paircue.services.filesystem import FilesystemSource
 from paircue.services.glossary import GlossaryStore
 from paircue.services.media_browser import EmbyClient, JellyfinClient
@@ -20,9 +24,26 @@ from paircue.services.translator import (
 
 def build_runtime(settings: PairCueSettings) -> CoreRuntime:
     state = StateStore(settings.state_dir / "paircue.sqlite3")
-    downloader = SubliminalDownloader(settings.provider_names, settings.state_dir / "tmp")
+    opensubtitles_key = settings.opensubtitles_api_key.get_secret_value()
+    downloader: SubtitleDownloader
+    if settings.subtitle_download_enabled and opensubtitles_key:
+        downloader = OpenSubtitlesDownloader(
+            api_key=opensubtitles_key,
+            username=settings.opensubtitles_username,
+            password=settings.opensubtitles_password.get_secret_value(),
+            timeout_seconds=settings.subtitle_download_timeout_seconds,
+        )
+    else:
+        downloader = DisabledSubtitleDownloader()
     glossary = GlossaryStore(settings.state_dir / "glossaries")
-    synchronizer = SubtitleSynchronizer() if settings.sync_enabled else None
+    synchronizer = (
+        SubtitleSynchronizer(
+            max_offset_seconds=settings.sync_max_offset_seconds,
+            min_confidence=settings.sync_min_confidence,
+        )
+        if settings.sync_enabled
+        else None
+    )
 
     translator: CompleteTranslator | None = None
     if settings.translation_enabled:

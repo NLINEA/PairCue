@@ -1,81 +1,236 @@
 from __future__ import annotations
 
+import gzip
+import io
 import logging
-import tempfile
+import threading
+import zipfile
 from pathlib import Path
+from typing import Protocol, cast
+from urllib.parse import urlparse
 
-from babelfish import Language
-from subliminal import download_best_subtitles, save_subtitles, scan_video
+import httpx
+import srt
+from charset_normalizer import from_bytes
 
-from paircue.languages import observed_language_tag
+from paircue import __version__
+from paircue.languages import language_matches
+from paircue.models import MediaItem
 from paircue.services.atomic import atomic_write_bytes
 
 log = logging.getLogger(__name__)
 
+OPEN_SUBTITLES_API = "https://api.opensubtitles.com/api/v1"
+MAX_SUBTITLE_BYTES = 5 * 1024 * 1024
 
-class SubliminalDownloader:
-    def __init__(self, providers: tuple[str, ...], temporary_root: Path) -> None:
-        self.providers = providers
-        self.temporary_root = temporary_root
-        self.temporary_root.mkdir(parents=True, exist_ok=True)
 
-    def download(self, media_path: Path, languages: set[str]) -> tuple[Path, ...]:
-        if not languages:
-            return ()
-        requested_by_language: dict[Language, str] = {}
-        for tag in languages:
-            try:
-                requested_by_language[Language.fromietf(tag)] = tag
-            except (AttributeError, ValueError):
-                log.warning("subtitle downloader does not recognize language tag %s", tag)
-        if not requested_by_language:
-            return ()
-        video = scan_video(str(media_path))
-        found = download_best_subtitles(
-            {video},
-            set(requested_by_language),
-            providers=list(self.providers),
-            only_one=True,
-        ).get(video, [])
-        if not found:
-            return ()
+class SubtitleDownloader(Protocol):
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]: ...
 
+
+class DisabledSubtitleDownloader:
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
+        return ()
+
+
+class OpenSubtitlesDownloader:
+    """Small first-party client for the documented OpenSubtitles.com REST API."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        username: str = "",
+        password: str = "",
+        timeout_seconds: float = 30,
+        client: httpx.Client | None = None,
+    ) -> None:
+        if not api_key:
+            raise ValueError("an OpenSubtitles API key is required")
+        if bool(username) != bool(password):
+            raise ValueError("OpenSubtitles username and password must be configured together")
+        self.api_key = api_key
+        self.username = username
+        self.password = password
+        self.client = client or httpx.Client(
+            follow_redirects=False,
+            timeout=httpx.Timeout(timeout_seconds),
+        )
+        self._token = ""
+        self._api_base = OPEN_SUBTITLES_API
+        self._login_lock = threading.Lock()
+
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         outputs: list[Path] = []
-        with tempfile.TemporaryDirectory(dir=self.temporary_root) as directory:
-            save_subtitles(
-                video,
-                found,
-                single=False,
-                directory=directory,
-                encoding="utf-8",
-                subtitle_format="srt",
-                extension="srt",
-                language_format="ietf",
-            )
-            for candidate in Path(directory).glob("*.srt"):
-                prefix = f"{media_path.stem}."
-                if not candidate.name.startswith(prefix):
+        for language in sorted(languages):
+            target = item.path.parent / f"{item.path.stem}.{language}.srt"
+            if target.exists():
+                continue
+            try:
+                file_id = self._search_file(item, language)
+                if file_id is None:
                     continue
-                observed = candidate.name[len(prefix) : -4]
-                try:
-                    language = Language.fromietf(observed)
-                except (AttributeError, ValueError):
-                    continue
-                requested_tag = requested_by_language.get(language)
-                if requested_tag is None:
-                    normalized = observed_language_tag(observed)
-                    requested_tag = next(
-                        (
-                            tag
-                            for known, tag in requested_by_language.items()
-                            if observed_language_tag(str(known)) == normalized
-                        ),
-                        None,
-                    )
-                if requested_tag is None:
-                    continue
-                target = media_path.parent / f"{media_path.stem}.{requested_tag}.srt"
-                atomic_write_bytes(target, candidate.read_bytes())
+                content = self._download_file(file_id, target.name)
+                atomic_write_bytes(target, content)
                 outputs.append(target)
-                log.info("downloaded %s subtitle for %s", requested_tag, media_path.name)
+                log.info("downloaded %s subtitle for %s", language, item.path.name)
+            except (
+                EOFError,
+                OSError,
+                httpx.HTTPError,
+                KeyError,
+                TypeError,
+                ValueError,
+                zipfile.BadZipFile,
+            ) as exc:
+                log.warning(
+                    "OpenSubtitles request failed for %s (%s): %s",
+                    item.path.name,
+                    language,
+                    exc,
+                )
         return tuple(outputs)
+
+    def _search_file(self, item: MediaItem, language: str) -> int | None:
+        params: dict[str, str | int] = {
+            "languages": language.casefold(),
+            "order_by": "download_count",
+            "order_direction": "desc",
+            "query": item.show_title or item.title,
+            "type": item.media_type,
+        }
+        if item.media_type == "movie" and item.year is not None:
+            params["year"] = item.year
+        if item.media_type == "episode":
+            if item.season is not None:
+                params["season_number"] = item.season
+            if item.episode is not None:
+                params["episode_number"] = item.episode
+        response = self.client.get(
+            f"{self._api_base}/subtitles",
+            params=params,
+            headers=self._headers(),
+        )
+        response.raise_for_status()
+        data = response.json().get("data", [])
+        if not isinstance(data, list):
+            raise ValueError("OpenSubtitles returned an invalid search response")
+        for result in data:
+            if not isinstance(result, dict):
+                continue
+            attributes = result.get("attributes", {})
+            if not isinstance(attributes, dict):
+                continue
+            observed = str(attributes.get("language") or "")
+            if observed and not language_matches(observed, language):
+                continue
+            files = attributes.get("files", [])
+            if not isinstance(files, list):
+                continue
+            for file in files:
+                if isinstance(file, dict) and isinstance(file.get("file_id"), int):
+                    return int(file["file_id"])
+        return None
+
+    def _download_file(self, file_id: int, output_name: str) -> bytes:
+        token = self._login_token()
+        response = self.client.post(
+            f"{self._api_base}/download",
+            json={"file_id": file_id, "file_name": output_name, "sub_format": "srt"},
+            headers=self._headers(token),
+        )
+        response.raise_for_status()
+        link = response.json().get("link")
+        if not isinstance(link, str) or not self._is_allowed_download_url(link):
+            raise ValueError("OpenSubtitles returned an unsafe download URL")
+        with self.client.stream("GET", link, headers={"User-Agent": self._user_agent}) as download:
+            download.raise_for_status()
+            if not self._is_allowed_download_url(str(download.url)):
+                raise ValueError("OpenSubtitles redirected to an unsafe download URL")
+            content = bytearray()
+            for chunk in download.iter_bytes():
+                content.extend(chunk)
+                if len(content) > MAX_SUBTITLE_BYTES:
+                    raise ValueError("downloaded subtitle exceeds the size limit")
+        return self._normalize_subtitle(bytes(content))
+
+    def _login_token(self) -> str:
+        if not self.username:
+            return ""
+        with self._login_lock:
+            if self._token:
+                return self._token
+            response = self.client.post(
+                f"{OPEN_SUBTITLES_API}/login",
+                json={"username": self.username, "password": self.password},
+                headers=self._headers(),
+            )
+            response.raise_for_status()
+            payload = response.json()
+            token = payload.get("token")
+            if not isinstance(token, str) or not token:
+                raise ValueError("OpenSubtitles login returned no token")
+            base_url = payload.get("base_url")
+            if isinstance(base_url, str):
+                parsed = urlparse(base_url if "://" in base_url else f"https://{base_url}")
+                if parsed.scheme == "https" and self._is_opensubtitles_host(parsed.hostname):
+                    self._api_base = f"https://{parsed.hostname}/api/v1"
+            self._token = token
+            return token
+
+    @property
+    def _user_agent(self) -> str:
+        return f"PairCue v{__version__}"
+
+    def _headers(self, token: str = "") -> dict[str, str]:
+        headers = {
+            "Accept": "application/json",
+            "Api-Key": self.api_key,
+            "User-Agent": self._user_agent,
+        }
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
+
+    @staticmethod
+    def _is_opensubtitles_host(hostname: str | None) -> bool:
+        return hostname == "opensubtitles.com" or bool(
+            hostname and hostname.endswith(".opensubtitles.com")
+        )
+
+    @classmethod
+    def _is_allowed_download_url(cls, value: str) -> bool:
+        parsed = urlparse(value)
+        return parsed.scheme == "https" and cls._is_opensubtitles_host(parsed.hostname)
+
+    @staticmethod
+    def _normalize_subtitle(content: bytes) -> bytes:
+        if not content or len(content) > MAX_SUBTITLE_BYTES:
+            raise ValueError("downloaded subtitle has an invalid size")
+        if content.startswith(b"\x1f\x8b"):
+            with gzip.GzipFile(fileobj=io.BytesIO(content)) as archive:
+                content = archive.read(MAX_SUBTITLE_BYTES + 1)
+        elif content.startswith(b"PK\x03\x04"):
+            with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                candidates = [
+                    entry
+                    for entry in archive.infolist()
+                    if not entry.is_dir()
+                    and entry.filename.casefold().endswith(".srt")
+                    and 0 < entry.file_size <= MAX_SUBTITLE_BYTES
+                ]
+                if not candidates:
+                    raise ValueError("subtitle archive contains no safe SRT file")
+                with archive.open(min(candidates, key=lambda entry: entry.file_size)) as file:
+                    content = file.read(MAX_SUBTITLE_BYTES + 1)
+        if len(content) > MAX_SUBTITLE_BYTES:
+            raise ValueError("expanded subtitle exceeds the size limit")
+        match = from_bytes(content).best()
+        if match is None:
+            raise ValueError("downloaded subtitle encoding could not be detected")
+        text = str(match).replace("\r\n", "\n").replace("\r", "\n")
+        cues = list(srt.parse(text, ignore_errors=False))
+        if not cues:
+            raise ValueError("downloaded subtitle contains no valid cues")
+        rendered = cast(str, srt.compose(cues, reindex=True))
+        return rendered.encode("utf-8")

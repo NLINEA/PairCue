@@ -70,7 +70,7 @@ def create_downloads_app(
 ) -> FastAPI:
     app = FastAPI(
         title="PairCue Download Station",
-        version="0.1.0b3",
+        version="0.1.0b4",
         debug=False,
         docs_url=None,
         redoc_url=None,

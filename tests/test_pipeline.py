@@ -12,7 +12,7 @@ class NoopExtractor:
 
 
 class NoopDownloader:
-    def download(self, media_path: Path, languages: set[str]) -> tuple[Path, ...]:
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         return ()
 
 
@@ -20,10 +20,11 @@ class TargetDownloader(NoopDownloader):
     def __init__(self) -> None:
         self.requests: list[set[str]] = []
 
-    def download(self, media_path: Path, languages: set[str]) -> tuple[Path, ...]:
+    def download(self, item: MediaItem, languages: set[str]) -> tuple[Path, ...]:
         self.requests.append(languages)
         if "ja" not in languages:
             return ()
+        media_path = item.path
         output = media_path.parent / f"{media_path.stem}.ja.srt"
         output.write_text(
             "1\n00:00:00,000 --> 00:00:01,000\nこんにちは\n\n",

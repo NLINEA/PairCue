@@ -4,11 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paircue"
-version = "0.1.0b3"
+version = "0.1.0b4"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Zackary" }]
 keywords = [
   "plex",
@@ -30,21 +31,22 @@ classifiers = [
   "Topic :: Multimedia :: Video",
 ]
 dependencies = [
+  "charset-normalizer>=3.4,<4",
   "fastapi>=0.128,<1",
   "httpx>=0.28,<1",
+  "numpy>=2.0,<2.3",
   "opencc-python-reimplemented>=0.1.7,<1",
   "pydantic-settings>=2.12,<3",
   "python-multipart>=0.0.20,<1",
   "srt>=3.5.3,<4",
-  "subliminal>=2.6,<3",
-  "uvicorn[standard]>=0.35,<1",
+  "uvicorn>=0.35,<1",
 ]
 
 [project.optional-dependencies]
-sync = ["ffsubsync>=0.4.29,<1"]
 dev = [
   "build>=1.3,<2",
   "mypy>=1.17,<2",
+  "packaging>=24,<27",
   "pip-audit>=2.9,<3",
   "pytest>=9.0.3,<10",
   "pytest-cov>=6.2,<7",
@@ -79,5 +81,5 @@ strict = true
 packages = ["paircue"]
 
 [[tool.mypy.overrides]]
-module = ["babelfish", "opencc", "srt", "subliminal", "subliminal.*"]
+module = ["opencc", "srt"]
 ignore_missing_imports = true

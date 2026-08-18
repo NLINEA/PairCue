@@ -1,0 +1,44 @@
+# Runtime dependency policy. The CI license job installs PairCue in a clean environment,
+# walks only the production dependency graph, and fails closed on unknown licenses.
+
+allowed_licenses = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CC0-1.0",
+  "ISC",
+  "MIT",
+  "PSF-2.0",
+  "Python-2.0",
+  "Unlicense",
+  "Zlib",
+]
+
+denied_license_fragments = [
+  "AGPL",
+  "BUSL",
+  "Commons-Clause",
+  "Elastic-License",
+  "GPL",
+  "LGPL",
+  "Proprietary",
+  "SSPL",
+]
+
+blocked_packages = [
+  "auditok",
+  "ffsubsync",
+  "guessit",
+  "subliminal",
+]
+
+# Package-scoped exceptions do not approve the same license for new dependencies.
+[reviewed_license_exceptions]
+certifi = "MPL-2.0"
+
+# Use only when package metadata is incomplete. Each override requires a manual source review.
+[license_overrides]
+# NumPy 2.2 metadata reports generic "BSD"; its upstream LICENSE.txt is BSD-3-Clause.
+numpy = "BSD-3-Clause"
+opencc-python-reimplemented = "Apache-2.0"

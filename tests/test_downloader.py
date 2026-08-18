@@ -1,46 +1,159 @@
+import gzip
+import io
+import zipfile
 from pathlib import Path
 
-import pytest
+import httpx
 
-from paircue.services import downloader as downloader_module
-from paircue.services.downloader import SubliminalDownloader
+from paircue.models import MediaItem
+from paircue.services.downloader import OpenSubtitlesDownloader
+
+SUBTITLE = b"1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
 
 
-def test_downloader_preserves_the_requested_language_tag(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def _movie(tmp_path: Path) -> MediaItem:
     media = tmp_path / "Movie.mkv"
     media.write_bytes(b"video")
-    video = object()
+    return MediaItem("1", "movie", media, "Movie", year=2024)
 
-    monkeypatch.setattr(downloader_module, "scan_video", lambda _: video)
 
-    def fake_download(
-        videos: set[object],
-        languages: set[object],
-        **_: object,
-    ) -> dict[object, list[object]]:
-        assert videos == {video}
-        assert {str(language) for language in languages} == {"ja"}
-        return {video: [object()]}
+def test_official_api_searches_and_downloads_the_requested_language(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v1/subtitles":
+            assert request.headers["Api-Key"] == "api-key"
+            assert request.headers["User-Agent"].startswith("PairCue v")
+            assert request.url.params["languages"] == "ja"
+            assert request.url.params["query"] == "Movie"
+            assert request.url.params["type"] == "movie"
+            assert request.url.params["year"] == "2024"
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "attributes": {
+                                "language": "ja",
+                                "files": [{"file_id": 42, "file_name": "Movie.srt"}],
+                            }
+                        }
+                    ]
+                },
+            )
+        if request.url.path == "/api/v1/download":
+            assert request.headers.get("Authorization") is None
+            return httpx.Response(
+                200,
+                json={"link": "https://dl.opensubtitles.com/subtitles/42.srt"},
+            )
+        if request.url.host == "dl.opensubtitles.com":
+            return httpx.Response(200, content=SUBTITLE)
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
-    def fake_save(_: object, found: list[object], **kwargs: object) -> list[object]:
-        directory = Path(str(kwargs["directory"]))
-        (directory / "Movie.ja.srt").write_bytes(b"subtitle")
-        return found
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    downloader = OpenSubtitlesDownloader(api_key="api-key", client=client)
 
-    monkeypatch.setattr(downloader_module, "download_best_subtitles", fake_download)
-    monkeypatch.setattr(downloader_module, "save_subtitles", fake_save)
-    downloader = SubliminalDownloader(("example",), tmp_path / "temporary")
-
-    outputs = downloader.download(media, {"ja"})
+    outputs = downloader.download(_movie(tmp_path), {"ja"})
 
     assert outputs == (tmp_path / "Movie.ja.srt",)
-    assert outputs[0].read_bytes() == b"subtitle"
+    assert outputs[0].read_bytes() == SUBTITLE
 
 
-def test_downloader_ignores_an_unknown_but_safe_language_tag(tmp_path: Path) -> None:
-    downloader = SubliminalDownloader(("example",), tmp_path / "temporary")
+def test_account_login_token_and_returned_api_host_are_used(tmp_path: Path) -> None:
+    calls: list[str] = []
 
-    assert downloader.download(tmp_path / "Movie.mkv", {"zz"}) == ()
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.host or "")
+        if request.url.path == "/api/v1/subtitles":
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {"attributes": {"language": "en", "files": [{"file_id": 7}]}}
+                    ]
+                },
+            )
+        if request.url.path == "/api/v1/login":
+            return httpx.Response(
+                200,
+                json={"token": "jwt-token", "base_url": "vip-api.opensubtitles.com"},
+            )
+        if request.url.path == "/api/v1/download":
+            assert request.url.host == "vip-api.opensubtitles.com"
+            assert request.headers["Authorization"] == "Bearer jwt-token"
+            return httpx.Response(
+                200,
+                json={"link": "https://dl.opensubtitles.com/subtitles/7.srt.gz"},
+            )
+        if request.url.host == "dl.opensubtitles.com":
+            return httpx.Response(200, content=gzip.compress(SUBTITLE))
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    downloader = OpenSubtitlesDownloader(
+        api_key="api-key",
+        username="user",
+        password="password",
+        client=client,
+    )
+
+    outputs = downloader.download(_movie(tmp_path), {"en"})
+
+    assert outputs == (tmp_path / "Movie.en.srt",)
+    assert "vip-api.opensubtitles.com" in calls
+
+
+def test_archive_is_bounded_and_normalized_to_utf8() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("subtitle.srt", SUBTITLE)
+
+    normalized = OpenSubtitlesDownloader._normalize_subtitle(buffer.getvalue())
+
+    assert normalized == SUBTITLE
+
+
+def test_download_rejects_non_opensubtitles_url(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v1/subtitles":
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {"attributes": {"language": "en", "files": [{"file_id": 9}]}}
+                    ]
+                },
+            )
+        return httpx.Response(200, json={"link": "https://example.com/subtitle.srt"})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    downloader = OpenSubtitlesDownloader(api_key="api-key", client=client)
+
+    assert downloader.download(_movie(tmp_path), {"en"}) == ()
+    assert not (tmp_path / "Movie.en.srt").exists()
+
+
+def test_download_rejects_redirect_away_from_opensubtitles(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v1/subtitles":
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {"attributes": {"language": "en", "files": [{"file_id": 10}]}}
+                    ]
+                },
+            )
+        if request.url.path == "/api/v1/download":
+            return httpx.Response(
+                200,
+                json={"link": "https://dl.opensubtitles.com/subtitles/10.srt"},
+            )
+        if request.url.host == "dl.opensubtitles.com":
+            return httpx.Response(302, headers={"Location": "https://example.com/file.srt"})
+        return httpx.Response(200, content=SUBTITLE)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    downloader = OpenSubtitlesDownloader(api_key="api-key", client=client)
+
+    assert downloader.download(_movie(tmp_path), {"en"}) == ()
+    assert not (tmp_path / "Movie.en.srt").exists()

@@ -18,6 +18,21 @@ def test_translation_requires_a_key() -> None:
         PairCueSettings(translation_enabled=True, translation_api_key="")
 
 
+def test_opensubtitles_credentials_require_api_key_and_complete_pair() -> None:
+    with pytest.raises(ValidationError, match="configured together"):
+        PairCueSettings(opensubtitles_username="user")
+    with pytest.raises(ValidationError, match="OPENSUBTITLES_API_KEY"):
+        PairCueSettings(opensubtitles_username="user", opensubtitles_password="password")
+
+    settings = PairCueSettings(
+        opensubtitles_api_key="key",
+        opensubtitles_username="user",
+        opensubtitles_password="password",
+    )
+
+    assert settings.opensubtitles_username == "user"
+
+
 def test_glm_thinking_is_disabled_by_default() -> None:
     settings = PairCueSettings()
 

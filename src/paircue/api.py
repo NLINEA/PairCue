@@ -63,7 +63,7 @@ def create_core_app(settings: PairCueSettings, runtime: CoreRuntime) -> FastAPI:
     docs_url = "/docs" if settings.api_docs_enabled else None
     app = FastAPI(
         title="PairCue API",
-        version="0.1.0b3",
+        version="0.1.0b4",
         debug=False,
         docs_url=docs_url,
         redoc_url=None,

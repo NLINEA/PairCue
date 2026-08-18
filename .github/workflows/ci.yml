@@ -31,3 +31,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build --tag paircue:test .
+
+  runtime-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install packaging .
+      - run: python scripts/check_runtime_licenses.py --sbom paircue-sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paircue-runtime-sbom
+          path: paircue-sbom.cdx.json
+
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python scripts/check_dco.py "$BASE_REF" HEAD
+        env:
+          BASE_REF: origin/${{ github.base_ref }}

@@ -8,7 +8,7 @@ from opencc import OpenCC
 
 from paircue.languages import opencc_profile
 from paircue.models import MediaItem, ProcessResult
-from paircue.services.downloader import SubliminalDownloader
+from paircue.services.downloader import SubtitleDownloader
 from paircue.services.glossary import GlossaryStore
 from paircue.services.locks import KeyedLockPool
 from paircue.services.media_tools import (
@@ -43,7 +43,7 @@ class SubtitlePipeline:
         *,
         media_root: Path,
         state: StateStore,
-        downloader: SubliminalDownloader,
+        downloader: SubtitleDownloader,
         extractor: EmbeddedSubtitleExtractor,
         synchronizer: SubtitleSynchronizer | None,
         translator: CompleteTranslator | None,
@@ -122,7 +122,7 @@ class SubtitlePipeline:
                     message,
                     (target,),
                 )
-            downloaded = self.downloader.download(media_path, self._download_targets())
+            downloaded = self.downloader.download(item, self._download_targets())
             for path in downloaded:
                 if self.synchronizer is not None:
                     self.synchronizer.sync(media_path, path)
@@ -159,7 +159,7 @@ class SubtitlePipeline:
             )
 
         if source_path is None:
-            self.downloader.download(media_path, {self.source_language})
+            self.downloader.download(item, {self.source_language})
             source_path = find_language_sidecar(media_path, self.source_language)
         if source_path is None:
             raise RuntimeError(f"no {self.source_language} subtitle is available for translation")

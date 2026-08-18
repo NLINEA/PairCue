@@ -44,8 +44,14 @@ class PairCueSettings(BaseSettings):
 
     scan_interval_seconds: int = Field(default=1800, ge=60, le=86400)
     worker_queue_size: int = Field(default=1000, ge=1, le=10000)
-    providers: str = "gestdown,tvsubtitles,opensubtitles"
+    subtitle_download_enabled: bool = True
+    opensubtitles_api_key: SecretStr = SecretStr("")
+    opensubtitles_username: str = ""
+    opensubtitles_password: SecretStr = SecretStr("")
+    subtitle_download_timeout_seconds: float = Field(default=30, ge=5, le=120)
     sync_enabled: bool = True
+    sync_max_offset_seconds: int = Field(default=120, ge=1, le=600)
+    sync_min_confidence: float = Field(default=0.24, ge=0.1, le=0.95)
     clean_source_output: bool = True
 
     source_language: str = "en"
@@ -117,6 +123,12 @@ class PairCueSettings(BaseSettings):
             raise ValueError("PAIRCUE_API_TOKEN must contain at least 32 characters")
         if self.translation_enabled and not _secret_value(self.translation_api_key):
             raise ValueError("translation is enabled but PAIRCUE_TRANSLATION_API_KEY is empty")
+        opensubtitles_password = _secret_value(self.opensubtitles_password)
+        opensubtitles_key = _secret_value(self.opensubtitles_api_key)
+        if bool(self.opensubtitles_username) != bool(opensubtitles_password):
+            raise ValueError("OpenSubtitles username and password must be configured together")
+        if (self.opensubtitles_username or opensubtitles_password) and not opensubtitles_key:
+            raise ValueError("PAIRCUE_OPENSUBTITLES_API_KEY is required with account credentials")
         if self.source_language.casefold() == self.target_language.casefold():
             raise ValueError("source and target languages must differ")
         if self.platform in {"jellyfin", "emby"}:
@@ -129,10 +141,6 @@ class PairCueSettings(BaseSettings):
             if not self.server_path_prefix:
                 raise ValueError("PAIRCUE_SERVER_PATH_PREFIX is required for Jellyfin and Emby")
         return self
-
-    @property
-    def provider_names(self) -> tuple[str, ...]:
-        return tuple(name.strip() for name in self.providers.split(",") if name.strip())
 
     @property
     def allowed_hosts(self) -> list[str]:

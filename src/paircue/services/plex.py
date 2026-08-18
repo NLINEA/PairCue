@@ -35,7 +35,7 @@ class PlexClient:
                 "X-Plex-Token": token,
                 "X-Plex-Client-Identifier": "paircue",
                 "X-Plex-Product": "PairCue",
-                "X-Plex-Version": "0.1.0b3",
+                "X-Plex-Version": "0.1.0b4",
                 "X-Plex-Pms-Api-Version": "1.0.0",
                 "Accept": "application/json",
             },

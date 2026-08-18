@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import re
 
-from babelfish import Language
-
 LANGUAGE_TAG = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
 
 LANGUAGE_NAMES = {
@@ -30,7 +28,24 @@ LANGUAGE_NAMES = {
 }
 
 OBSERVED_ALIASES = {
+    "ara": "ar",
+    "deu": "de",
+    "dut": "nl",
+    "eng": "en",
     "english": "en",
+    "fre": "fr",
+    "fra": "fr",
+    "ger": "de",
+    "ind": "id",
+    "ita": "it",
+    "jpn": "ja",
+    "kor": "ko",
+    "nld": "nl",
+    "por": "pt",
+    "spa": "es",
+    "tha": "th",
+    "vie": "vi",
+    "zho": "zh",
     "cht": "zh-TW",
     "zht": "zh-TW",
     "traditional": "zh-TW",
@@ -72,15 +87,15 @@ def language_name(tag: str) -> str:
 
 
 def observed_language_tag(value: str) -> str | None:
-    """Normalize tags found in files or media metadata when Babelfish knows them."""
+    """Normalize common BCP-47 and media-container language tags."""
 
     raw = value.strip()
     alias = OBSERVED_ALIASES.get(raw.lower())
     if alias is not None:
         return alias
     try:
-        return canonicalize_language_tag(str(Language.fromietf(raw)))
-    except (AttributeError, ValueError):
+        return canonicalize_language_tag(raw)
+    except ValueError:
         return None
 
 

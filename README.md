@@ -26,7 +26,7 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
 1. Copy `.env.example` to `.env` and set the NAS mount paths and UID/GID.
 2. Copy `paircue.env.example` to `paircue.env` and choose a platform and translation settings.
 3. Build the image with `docker compose build core`.
-4. Generate the API token with `docker run --rm paircue:0.1.0-beta.3 paircue generate-token`.
+4. Generate the API token with `docker run --rm paircue:0.1.0-beta.4 paircue generate-token`.
 5. Start the subtitle service:
 
    ```bash
@@ -34,7 +34,8 @@ set `PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve the text exactly.
    ```
 
 Polling is the default, so no inbound port is required. Start with a test library or a copy of a
-few media files.
+few media files. This repository provides a Dockerfile for local builds; PairCue does not publish
+an official prebuilt container image.
 
 ## Supported platforms
 
@@ -102,6 +103,22 @@ can be configured with `PAIRCUE_TRANSLATION_BASE_URL`, `PAIRCUE_TRANSLATION_API_
 Subtitle text is sent to the configured translation provider. Users are responsible for reviewing
 that provider's privacy policy and terms.
 
+## Automatic subtitle search and download
+
+PairCue has a small, independently written adapter for the documented OpenSubtitles.com REST API.
+It does not use Subliminal, scrape provider pages, or copy another subtitle product's client code.
+Create your own OpenSubtitles API consumer, then set:
+
+```dotenv
+PAIRCUE_SUBTITLE_DOWNLOAD_ENABLED=true
+PAIRCUE_OPENSUBTITLES_API_KEY=your-api-key
+```
+
+An OpenSubtitles account login is optional; if used, set both
+`PAIRCUE_OPENSUBTITLES_USERNAME` and `PAIRCUE_OPENSUBTITLES_PASSWORD`. Search/download is disabled
+when no API key is configured. API quotas, provider terms, and the right to use downloaded subtitle
+content remain the user's responsibility.
+
 ## Language-learning pairs
 
 Set source and target [BCP-47 language tags](https://www.rfc-editor.org/info/bcp47) in
@@ -125,8 +142,8 @@ PAIRCUE_TARGET_LANGUAGE_STYLE=natural Cantonese-influenced Hong Kong wording sui
 
 English can be either the source or target, so pairs such as `en → zh-HK`, `ja → en`, `ko → en`,
 and `es → fr` are supported. Source and target must differ. When AI translation is disabled,
-PairCue asks subtitle providers for the configured target language; Chinese targets can also fall
-back to safe OpenCC script conversion.
+PairCue asks OpenSubtitles for the configured target language; Chinese targets can also fall back
+to safe OpenCC script conversion.
 
 | Learning goal | Source | Target | Bilingual result |
 |---|---|---|---|
@@ -153,10 +170,17 @@ PAIRCUE_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
 
 ## Automatic synchronization
 
-With `PAIRCUE_SYNC_ENABLED=true` (the default), PairCue runs ffsubsync against the media before
-translation. The translated and bilingual cues inherit the synchronized source timings exactly.
-ffsubsync's low-confidence safeguard is enabled, and replacement is atomic; if synchronization
-cannot be confirmed, PairCue keeps the original timing and continues translation.
+With `PAIRCUE_SYNC_ENABLED=true` (the default), PairCue decodes temporary mono PCM through the
+user-installed FFmpeg, then uses PairCue's own activity detector and FFT cross-correlation to
+estimate the subtitle offset. It does not depend on ffsubsync. The translated and bilingual cues
+inherit the synchronized source timings exactly. A conservative confidence threshold and maximum
+offset are configurable; replacement is atomic, and PairCue keeps the original timing when it
+cannot confirm a match.
+
+```dotenv
+PAIRCUE_SYNC_MAX_OFFSET_SECONDS=120
+PAIRCUE_SYNC_MIN_CONFIDENCE=0.24
+```
 
 ## Optional Download Station UI
 
@@ -192,9 +216,10 @@ See [SECURITY.md](SECURITY.md) for private vulnerability reporting guidance.
 ```bash
 python3.12 -m venv .venv
 . .venv/bin/activate
-pip install -e '.[sync,dev]'
+pip install -e '.[dev]'
 ruff check .
 pytest
+python scripts/check_runtime_licenses.py
 ```
 
 The design and trade-offs are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -206,8 +231,12 @@ follow-ups include a translation cache, per-library language-learning profiles, 
 reporting, and faster incremental scans.
 
 PairCue is an independent project and is not affiliated with Plex, Jellyfin, Emby, Synology,
-subtitle providers, or translation model providers.
+subtitle providers, or translation model providers. PairCue application logic is independently
+implemented; contributions copied or closely adapted from other subtitle products are not
+accepted.
 
 ## License
 
-MIT
+[MIT](LICENSE). See [DEPENDENCY_POLICY.md](DEPENDENCY_POLICY.md) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency, FFmpeg, service, and content
+boundaries. This is project documentation, not legal advice.
