@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.0b13 - 2026-08-18
+
+- Preserve existing source and target subtitles byte-for-byte by default: audio alignment now uses
+  temporary working copies, low-confidence pairing cannot fall through and overwrite a target,
+  and an existing bilingual result is never replaced.
+- Reposition PairCue around one distinctive outcome — a portable, aligned two-language subtitle in
+  the player's existing library — with a new original outcome image and Cantonese beginner page.
+- Add a documentation map, troubleshooting guide, support policy, public roadmap, community
+  standards, and a complete contributor setup without copying another product's code or content.
+- Add `paircue --version`, automated local-link validation, and CI/release scans that report common
+  credential or private AI-context risks without printing the suspected value.
+- Scan tracked files, Git history, and unpacked desktop release packages before publication, and
+  expand ignore rules for local environment and private-key files.
+
 ## 0.1.0b12 - 2026-08-18
 
 - Replace filename-only release instructions with direct Apple silicon, Intel Mac, Windows, and

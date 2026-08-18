@@ -20,6 +20,7 @@ import srt
 import uvicorn
 from pydantic import ValidationError
 
+from paircue import __version__
 from paircue.api import create_core_app
 from paircue.config import DownloadStationSettings, PairCueSettings
 from paircue.desktop_service import DesktopService, DesktopServiceError
@@ -45,6 +46,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="paircue", description="cross-platform bilingual subtitle automation"
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subcommands = parser.add_subparsers(dest="command")
     subcommands.add_parser("serve", help="run the subtitle service")
     subcommands.add_parser("downloads", help="run the isolated Download Station service")

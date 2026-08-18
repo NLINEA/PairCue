@@ -5,7 +5,8 @@ or PairCue account is involved.
 
 ## 1. Check the app safely
 
-1. Download the archive for your computer from the [latest beta release](../../releases).
+1. Download the archive for your computer from the
+   [latest beta release](https://github.com/zacklam1120-spec/PairCue/releases).
 2. Unzip it and open **PairCue**.
 3. Choose the player you use.
 4. Choose **Try safe demo**.
@@ -18,7 +19,7 @@ this step.
 
 The shortest route is **Choose two SRTs**. Select the subtitle spoken in the video first and the
 language you want to read or learn second. PairCue keeps both files on your device, combines them,
-and highlights the new `.mul.srt`.
+and highlights the new `.mul.srt`. Both original files remain byte-for-byte unchanged.
 
 If you only have a video, choose **Try one video** instead. PairCue will explain any optional search,
 translation, transcription, or FFmpeg requirement before asking for it.

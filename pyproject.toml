@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paircue"
-version = "0.1.0b12"
+version = "0.1.0b13"
 description = "Cross-platform aligned bilingual subtitles for language learning"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -47,6 +47,9 @@ dependencies = [
 Homepage = "https://github.com/zacklam1120-spec/PairCue"
 Repository = "https://github.com/zacklam1120-spec/PairCue"
 Issues = "https://github.com/zacklam1120-spec/PairCue/issues"
+Documentation = "https://github.com/zacklam1120-spec/PairCue/tree/main/docs"
+Discussions = "https://github.com/zacklam1120-spec/PairCue/discussions"
+Releases = "https://github.com/zacklam1120-spec/PairCue/releases"
 Changelog = "https://github.com/zacklam1120-spec/PairCue/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]

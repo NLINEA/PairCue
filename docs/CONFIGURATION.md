@@ -44,7 +44,8 @@ video. Stop PairCue before disconnecting a network drive.
 
 ## Languages and line order
 
-The setup page uses language names. Environment files use standard BCP-47 language tags:
+The setup page shows common language names and keeps their standard BCP-47 tags in the field. You
+can choose a suggestion or type another valid tag. Environment files use the tags directly:
 
 ```dotenv
 PAIRCUE_SOURCE_LANGUAGE=ja
@@ -133,7 +134,8 @@ PAIRCUE_BILINGUAL_MERGE_MIN_MATCH_RATIO=0.7
 
 Synchronization is enabled by default. PairCue uses a user-installed FFmpeg to decode temporary
 mono audio, then its own activity detector and FFT cross-correlation to estimate subtitle offset.
-It keeps the original timing if confidence is too low.
+Existing SRT files are copied to a temporary working directory first. PairCue keeps the originals
+untouched and keeps the working timing unchanged if confidence is too low.
 
 ```dotenv
 PAIRCUE_SYNC_ENABLED=true
@@ -161,5 +163,7 @@ official Webhook Plugin supports custom generic templates. Plex can use its nati
 - `Movie.<target>.srt` — target-language subtitle.
 - `Movie.mul.srt` — both languages sharing one timeline.
 
-By default, non-dialogue cues are removed when the source sidecar is rewritten. Set
-`PAIRCUE_CLEAN_SOURCE_OUTPUT=false` to preserve source text exactly.
+Existing source and target subtitles are preserved byte-for-byte by default. Non-dialogue cleanup
+affects the new target and bilingual result in memory, not the original file. The advanced
+`PAIRCUE_CLEAN_SOURCE_OUTPUT=true` option explicitly rewrites the source with the synchronized,
+dialogue-only cues; leave it `false` unless that destructive behavior is intentional.

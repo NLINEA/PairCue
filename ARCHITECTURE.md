@@ -29,7 +29,7 @@ flowchart LR
     Pipeline --> Sync["PairCue audio alignment"]
     Pipeline --> Merge["Confidence-scored time merger"]
     Pipeline --> Translate["Validated translator + fallback"]
-    Pipeline --> Output["Atomic source / target / bilingual files"]
+    Pipeline --> Output["Preserved inputs + atomic new outputs"]
     Pipeline --> State["SQLite state"]
 
     Setup["Private setup wizard"] --> Loopback["Token-protected loopback server"]
@@ -76,8 +76,9 @@ media servers reserve it for hearing-impaired captions.
    and reject paths outside it.
 2. Deduplicate the queue and take a lock for the media path.
 3. Extract text-based embedded subtitles matching the configured source or target language.
-4. When both language tracks exist, synchronize each against the media and merge by temporal
-   connected components. Never assume cue numbers or counts match.
+4. When both language tracks exist, copy each to a temporary working directory, synchronize those
+   copies against the media, and merge by temporal connected components. Never assume cue numbers
+   or counts match, and never mutate the user-owned tracks by default.
 5. Require the configured timing-coverage threshold in both tracks before publishing the merged
    bilingual file. This handles one-to-many cue segmentation without silently accepting unrelated
    subtitle releases.
@@ -88,8 +89,8 @@ media servers reserve it for hearing-impaired captions.
 8. Translate in bounded batches. A batch is accepted only when every requested ID appears exactly
    once with non-empty text. Use the fallback provider only after the primary exhausts its retries.
 9. Validate complete coverage across the whole file.
-10. Write the target-language output and then the bilingual learning output using atomic
-   replacements. The bilingual file is the completion marker.
+10. Write a missing target-language output and then the bilingual learning output using atomic
+   replacements. An existing bilingual output is never overwritten; it is the completion marker.
 11. Record the result in SQLite.
 
 ## Trade-offs

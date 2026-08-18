@@ -60,7 +60,7 @@ class PairCueSettings(BaseSettings):
     transcription_max_attempts: int = Field(default=3, ge=1, le=6)
     transcription_chunk_seconds: int = Field(default=300, ge=60, le=600)
     transcription_prompt: str = Field(default="", max_length=1_000)
-    clean_source_output: bool = True
+    clean_source_output: bool = False
 
     source_language: str = "en"
     source_language_name: str = Field(default="", max_length=80)

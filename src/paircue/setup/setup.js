@@ -126,7 +126,7 @@ function buildConfig(maskSecrets = false) {
     configLine("PAIRCUE_TARGET_LANGUAGE_STYLE", value("target-style")),
     configLine("PAIRCUE_BILINGUAL_ORDER", value("line-order")),
     configLine("PAIRCUE_SYNC_ENABLED", "true"),
-    configLine("PAIRCUE_CLEAN_SOURCE_OUTPUT", "true"),
+    configLine("PAIRCUE_CLEAN_SOURCE_OUTPUT", "false"),
     "",
     "# Exact-release subtitle search",
     configLine("PAIRCUE_SUBTITLE_DOWNLOAD_ENABLED", String(checked("search-enabled"))),

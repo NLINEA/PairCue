@@ -52,6 +52,12 @@ def test_glm_thinking_is_disabled_by_default() -> None:
     assert settings.fallback_disable_thinking is False
 
 
+def test_existing_source_subtitles_are_preserved_by_default() -> None:
+    settings = PairCueSettings()
+
+    assert settings.clean_source_output is False
+
+
 def test_target_language_is_canonicalized_and_named() -> None:
     settings = PairCueSettings(target_language="ZH-hk")
 

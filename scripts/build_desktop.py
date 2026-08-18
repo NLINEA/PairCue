@@ -104,6 +104,7 @@ def main() -> int:
 
     payload, executable = _built_payload(dist_dir)
     _run([str(executable), "setup", "--no-open"], root)
+    _run([str(executable), "--version"], root)
     if executable.stat().st_size < 1_000_000:
         raise RuntimeError("desktop executable is unexpectedly small")
     if payload.is_dir():

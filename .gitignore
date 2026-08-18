@@ -1,11 +1,18 @@
 .DS_Store
-.env
-paircue.env
-paircue.env.backup-*
+.env*
+!.env.example
+paircue.env*
+!paircue.env.example
 .paircue-state/
 # Keep any pre-rename local credentials out of Git.
 subflow.env
 downloads.env
+!downloads.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials*.json
 .python-version
 .ruff_cache/
 .mypy_cache/

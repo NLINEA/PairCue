@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import logging
+import shutil
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import srt
@@ -50,7 +54,7 @@ class SubtitlePipeline:
         translator: CompleteTranslator | None,
         glossary: GlossaryStore,
         transcriber: Transcriber | None = None,
-        clean_source_output: bool = True,
+        clean_source_output: bool = False,
         source_language: str = "en",
         target_language: str = "zh-TW",
         bilingual_order: str = "target-first",
@@ -102,11 +106,11 @@ class SubtitlePipeline:
         self.extractor.extract(media_path, {self.source_language, *self._download_targets()})
         target = find_language_sidecar(media_path, self.target_language)
         bilingual = find_language_sidecar(media_path, self.target_language, bilingual=True)
-        if target is not None and bilingual is not None:
+        if bilingual is not None:
             return ProcessResult(
                 "skipped",
-                f"{self.target_language} output already exists",
-                (target, bilingual),
+                "bilingual output already exists; kept it unchanged",
+                (bilingual,),
             )
 
         source_path = find_language_sidecar(media_path, self.source_language)
@@ -117,6 +121,12 @@ class SubtitlePipeline:
                 return self._merge_existing_pair(media_path, source_path, target)
             except ValueError as exc:
                 log.warning("existing subtitle pair could not be merged: %s", exc)
+                return ProcessResult(
+                    "failed",
+                    "kept both existing subtitle tracks unchanged because their timing match "
+                    f"was too low: {exc}",
+                    (source_path, target),
+                )
 
         if self.translator is None:
             if target is not None:
@@ -187,11 +197,21 @@ class SubtitlePipeline:
                 return self._merge_existing_pair(media_path, source_path, target)
             except ValueError as exc:
                 log.warning("existing subtitle pair could not be merged: %s", exc)
+                return ProcessResult(
+                    "failed",
+                    "kept both existing subtitle tracks unchanged because their timing match "
+                    f"was too low: {exc}",
+                    (source_path, target),
+                )
         synchronized = False
-        if self.synchronizer is not None and not source_was_generated:
-            synchronized = self.synchronizer.sync(media_path, source_path)
-
-        source = clean_spoken_dialogue(parse_srt(source_path))
+        if source_was_generated:
+            source = clean_spoken_dialogue(parse_srt(source_path))
+        else:
+            with self._working_subtitle(media_path, source_path) as (
+                working_source,
+                synchronized,
+            ):
+                source = clean_spoken_dialogue(parse_srt(working_source))
         glossary = self.glossary.load(item.show_title or item.title)
         translations = self.translator.translate_all(
             source,
@@ -228,11 +248,10 @@ class SubtitlePipeline:
         source_path: Path,
         target_path: Path,
     ) -> ProcessResult:
-        if self.synchronizer is not None:
-            self.synchronizer.sync(media_path, source_path)
-            self.synchronizer.sync(media_path, target_path)
-        source = clean_spoken_dialogue(parse_srt(source_path))
-        target = clean_spoken_dialogue(parse_srt(target_path))
+        with self._working_subtitle(media_path, source_path) as (working_source, _):
+            source = clean_spoken_dialogue(parse_srt(working_source))
+        with self._working_subtitle(media_path, target_path) as (working_target, _):
+            target = clean_spoken_dialogue(parse_srt(working_target))
         merged = merge_bilingual_subtitles(
             source,
             target,
@@ -250,6 +269,23 @@ class SubtitlePipeline:
             f"({merged.source_match_ratio:.0%}/{merged.target_match_ratio:.0%} matched)",
             (target_path, bilingual_path),
         )
+
+    @contextmanager
+    def _working_subtitle(
+        self,
+        media_path: Path,
+        subtitle_path: Path,
+    ) -> Iterator[tuple[Path, bool]]:
+        """Align a disposable subtitle copy so user-owned tracks stay untouched."""
+
+        if self.synchronizer is None:
+            yield subtitle_path, False
+            return
+        with tempfile.TemporaryDirectory(prefix="paircue-sync-") as temporary_directory:
+            working_path = Path(temporary_directory) / subtitle_path.name
+            shutil.copy2(subtitle_path, working_path)
+            synchronized = self.synchronizer.sync(media_path, working_path)
+            yield working_path, synchronized
 
     def _download_targets(self) -> set[str]:
         targets = {self.target_language}

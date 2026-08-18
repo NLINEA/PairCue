@@ -1,188 +1,192 @@
-# PairCue
+<p align="center">
+  <img src="src/paircue/setup/favicon.svg" width="88" alt="PairCue logo">
+</p>
 
-**Make your own media library bilingual.**
+<h1 align="center">PairCue</h1>
 
-PairCue finds, generates, translates, and aligns subtitles for Plex, Jellyfin, Emby, or any media
-folder. It saves one ordinary bilingual `.mul.srt` beside your video, ready for the player you
-already use.
+<p align="center"><strong>Your library. Two languages.</strong></p>
 
-No custom player. No browser extension. No PairCue account. Your finished subtitle remains yours.
+<p align="center">
+  Turn a private media library into a bilingual learning library — with two subtitle languages
+  in the player you already use.
+</p>
 
-[Download the beta](../../releases) · [Try the safe demo](#choose-your-first-result) ·
-[Read the setup guide](docs/CONFIGURATION.md)
+<p align="center">
+  <a href="https://github.com/zacklam1120-spec/PairCue/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zacklam1120-spec/PairCue/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/zacklam1120-spec/PairCue/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/zacklam1120-spec/PairCue?include_prereleases&sort=semver"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8ff0c8"></a>
+  <img alt="Plex, Jellyfin, Emby and folders" src="https://img.shields.io/badge/Plex%20%7C%20Jellyfin%20%7C%20Emby%20%7C%20Folders-0b1110">
+</p>
+
+<p align="center">
+  <a href="https://github.com/zacklam1120-spec/PairCue/releases"><strong>Download the beta</strong></a>
+  · <a href="#see-it-before-setup">See the safe demo</a>
+  · <a href="https://github.com/zacklam1120-spec/PairCue">Star PairCue</a>
+</p>
+
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-HK.md">繁體中文</a></p>
+
+![PairCue turns one scene into an aligned two-language subtitle](docs/images/paircue-outcome.png)
+
+PairCue is the bridge between a private media collection and language learning. It finds or
+generates missing subtitles, translates when needed, aligns two tracks by time, and saves one
+portable `Movie.mul.srt` beside the video.
+
+No custom player. No browser extension. No PairCue account. No analytics.
+
+> PairCue is beta software. Start with the safe demo, two SRT files, or a copy of one video.
+
+## Why PairCue
+
+| What matters | PairCue's approach |
+|---|---|
+| **Any useful language pair** | Source and learning languages are independent; support depends on your files or chosen provider |
+| **Your existing player** | The result is an ordinary bilingual SRT for Plex, Jellyfin, Emby, Kodi, Infuse, VLC, and more |
+| **A first result without setup** | The owned demo needs no media, server, account, key, FFmpeg, or network |
+| **Local and reversible** | Existing subtitle files are aligned through temporary copies and stay unchanged by default |
+
+If PairCue would make your library more useful, star the project. It helps other language learners
+discover it while the beta is still small.
+
+## See it before setup
+
+Open PairCue and press **Try safe demo**. It creates this project-owned English–Spanish result in
+your Downloads folder without reading your library or making a network request:
 
 ```srt
+1
 00:00:01,000 --> 00:00:03,520
 ¿Por dónde empezamos?
 Where should we begin?
 ```
 
-The [complete synthetic demo](examples) belongs to this project and can be regenerated locally
-without a server, account, key, or network request.
+The [complete synthetic demo](examples) belongs to PairCue and can be regenerated locally.
 
-![PairCue real safe demo, from platform choice to a bilingual subtitle](docs/images/paircue-demo.gif)
-
-> PairCue is beta software. Start with a copy of one video or a small test folder.
-
-## Choose your first result
-
-Open PairCue, choose where you watch, then choose the result you want. Technical settings stay
-hidden until they are needed.
-
-| Start here | What you need | What PairCue does |
-|---|---|---|
-| **Try safe demo** | Nothing | Creates a tiny English–Spanish bilingual SRT with project-owned text |
-| **Choose two SRTs** | Two subtitle files | Aligns them by time and creates one bilingual SRT |
-| **Try one video** | One video | Reuses, finds, or generates subtitles, then translates and pairs them |
-| **Automate my library** | A media folder or server connection | Watches the library and processes new videos |
-
-The safe demo is the quickest way to see a finished result. It uses no network, account, media
-file, API key, or third-party content. **Choose two SRTs** is the fastest path for your own files;
-PairCue never uploads them and refuses to publish a low-confidence pairing.
+![PairCue setup demo from platform choice to a bilingual subtitle](docs/images/paircue-demo.gif)
 
 ## Download and open
 
-No Python or terminal is required. Use the direct download for your computer, unzip it, and open
-**PairCue**.
+No Python or terminal is required. Download, unzip, then open **PairCue**.
 
-| Your computer | Download |
+| Your computer | Beta download |
 |---|---|
-| Apple silicon Mac | [Download PairCue for Apple silicon](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-macOS-arm64.zip) |
-| Intel Mac | [Download PairCue for Intel Mac](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-macOS-x64.zip) |
-| Windows | [Download PairCue for Windows](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-windows-x64.zip) |
-| Linux | [Download PairCue for Linux](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b12/PairCue-linux-x64.tar.gz) |
+| Apple silicon Mac | [PairCue for Apple silicon](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-macOS-arm64.zip) |
+| Intel Mac | [PairCue for Intel Mac](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-macOS-x64.zip) |
+| Windows | [PairCue for Windows](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-windows-x64.zip) |
+| Linux | [PairCue for Linux](https://github.com/zacklam1120-spec/PairCue/releases/download/v0.1.0b13/PairCue-linux-x64.tar.gz) |
 
-These beta apps are not yet signed by Apple or Microsoft. On macOS, right-click PairCue and choose
-**Open** the first time. Windows may show an unrecognized-publisher warning. Download only from this
-repository; each release includes `SHA256SUMS.txt` for integrity checks.
+The beta apps are not yet signed. On macOS, right-click PairCue and choose **Open** the first time.
+Windows may show an unrecognized-publisher warning. Download only from this repository; every
+release includes `SHA256SUMS.txt`.
 
-## Your first subtitle
+## Choose your first result
 
-1. Open PairCue and choose **Plex, Jellyfin, Emby, or Other players**.
-2. Choose one of the four first results above.
-3. Pick the language spoken in the video and the language you want to read or learn.
-4. Follow the fields PairCue reveals, then choose a file or folder when asked.
+PairCue asks where you watch first, then reveals only what your chosen result needs.
 
-Progress and the result remain visible on the private setup page. On success, PairCue reveals the
-new subtitle in Finder or your file manager. Settings stay on this device and an older setup is
-backed up before replacement.
+| Start here | Bring | Get |
+|---|---|---|
+| **Try safe demo** | Nothing | A tiny owned bilingual SRT |
+| **Choose two SRTs** | Two language tracks | A new aligned `.mul.srt`; both inputs stay untouched |
+| **Try one video** | One local video | Reused, found, generated, or translated subtitles plus `.mul.srt` |
+| **Automate my library** | A folder or Plex, Jellyfin, or Emby connection | New videos processed in the background |
 
-FFmpeg and FFprobe are optional and are not bundled. Search, translation, the safe demo, and pairing
-two SRT files work without them. Extracting embedded subtitles, audio-based synchronization, and
-speech generation need a separate FFmpeg installation.
+The shortest useful path is **Choose two SRTs**. Select the subtitle spoken in the video, then the
+language you want to read or learn. PairCue refuses to publish the result when timing confidence is
+too low.
 
-Command-line users can pair two files without a media server or account:
+For command-line users:
 
 ```bash
 paircue pair Movie.ja.srt Movie.en.srt -o Movie.mul.srt
 ```
 
-## What PairCue creates
+## How one video becomes bilingual
 
-- `Movie.<source>.srt` — synchronized source subtitle when one is found or extracted.
-- `Movie.<target>.srt` — the language you want to read or learn.
-- `Movie.mul.srt` — both languages sharing one cue timeline.
+PairCue takes the least invasive route that can produce a complete result:
 
-`mul` is the standard language code for multilingual content. The result works as a normal SRT
-sidecar in Plex, Jellyfin, Emby, Kodi, Infuse, VLC, and other players that read external subtitles.
-PairCue writes atomically, never overwrites a previous paired result, and publishes no partial
-translation when a cue is missing.
+```text
+existing tracks → optional subtitle search → optional speech generation
+                → optional translation → timing alignment → Movie.mul.srt
+```
 
-## Use any two languages
+- Two existing languages are paired without a translation provider.
+- Search uses the documented OpenSubtitles.com API and your own account or key.
+- Speech generation and translation are opt-in and use the endpoint you configure.
+- A translation is published only when every cue has a valid result.
+- A previous bilingual output is never overwritten.
 
-English and Chinese are defaults, not limits. The spoken and learning languages are independent,
-and either one can appear on top.
+FFmpeg is optional and not bundled. Pairing two SRT files, the safe demo, search, and translation
+can work without it. Embedded-subtitle extraction, audio alignment, and speech generation need a
+separate FFmpeg installation.
 
-| Learning goal | Spoken language | Learning language | Result |
-|---|---|---|---|
-| Learn English from Japanese media | Japanese | English | English + Japanese |
-| Learn Japanese with an English base | English | Japanese | Japanese + English |
-| Watch with Hong Kong Traditional Chinese | English | Traditional Chinese (Hong Kong) | zh-HK + English |
-| Practise French with Spanish media | Spanish | French | French + Spanish |
+## Languages and players
 
-Regional variants and custom wording styles are supported. See
-[configuration and language examples](docs/CONFIGURATION.md#languages-and-line-order).
+English and Chinese are defaults, not limits. Use Japanese + English, English + Japanese,
+Spanish + French, `zh-HK` + English, or another pair supported by your subtitle files or provider.
+Choose which language appears on top. Regional tags and custom wording guidance are supported.
 
-## Automate your library
+`Movie.mul.srt` uses the standard multilingual language tag and remains a normal sidecar subtitle.
+The media servers below can be discovered directly; other players simply read the finished file.
 
-After one video works, run PairCue again and choose **Automate my library**. PairCue checks the
-folder or server connection before saving, opens a private local dashboard, scans on startup, and
-can keep watching for new videos.
-
-| Platform | Library discovery | New-item trigger |
+| Library source | Discovery | New-item trigger |
 |---|---|---|
 | Plex | Authenticated library API | Polling or native webhook |
 | Jellyfin | Authenticated user-items API | Polling or Webhook Plugin |
 | Emby | Authenticated user-items API | Polling or webhook |
-| Kodi, Infuse, VLC, NAS, or media folder | Recursive file scan | Polling |
+| Kodi, Infuse, VLC, NAS, or folders | Recursive file scan | Polling |
 
-The finished SRT is portable; Kodi, Infuse, VLC, and other players need no PairCue integration.
-For an always-on NAS or home server, follow the [Docker guide](docs/DOCKER.md).
+## Privacy is part of the product
 
-## How the fallback works
+- The setup and dashboard stay on this device and load no remote app assets.
+- PairCue has no account, analytics SDK, or automatic telemetry.
+- Existing SRT files remain byte-for-byte unchanged by default, including during audio alignment.
+- Automated gates check tracked files, Git history, and release packages for common credential and
+  private AI-context patterns without printing suspected values.
+- Media stays local unless you explicitly enable a transcription provider; subtitle dialogue stays
+  local unless you explicitly enable search or translation.
+- Each release runs tests, dependency vulnerability and license checks, and includes an SBOM plus
+  checksums.
 
-PairCue takes the least invasive route that can produce a complete result:
+Provider features are governed by that provider's terms, privacy policy, retention, and pricing.
+Read [Security](SECURITY.md) before exposing any service beyond a trusted home network.
 
-`existing subtitles → official subtitle search → speech transcription → translation → bilingual SRT`
+## Help, docs, and direction
 
-- Existing sidecars are used first.
-- Optional search uses the documented OpenSubtitles.com API.
-- Optional transcription can generate timed source subtitles when none exist.
-- Optional translation creates the learning language.
-- Two existing languages are paired without calling a translation provider.
+New here? Start with the [10-minute beta mission](docs/BETA_TEST.md) or
+[Troubleshooting](docs/TROUBLESHOOTING.md).
 
-Search, transcription, and translation are opt-in and require your own provider credentials. Setup
-explains the requirement before showing the relevant field. Details are in
-[Configuration](docs/CONFIGURATION.md).
-
-## Privacy and trust
-
-- Setup and the dashboard bind to the local device; PairCue has no analytics SDK or account.
-- Secrets are kept out of URLs and browser storage. Protected actions use authorization headers.
-- Media is sent nowhere unless you explicitly enable a translation or transcription provider.
-- Media-server paths must resolve inside the folder PairCue is allowed to access.
-- Releases include checksums, an SBOM, dependency-license checks, and vulnerability scanning.
-- FFmpeg is not bundled. Third-party services remain subject to their own terms and privacy policy.
-
-See [SECURITY.md](SECURITY.md) for security details and private vulnerability reporting.
-
-## Documentation
-
-- [Configuration, providers, languages, pairing, and synchronization](docs/CONFIGURATION.md)
-- [Always-on Docker or NAS installation](docs/DOCKER.md)
-- [Optional Download Station service](docs/DOWNLOAD_STATION.md)
+- [Documentation map](docs/README.md)
+- [Configuration and language examples](docs/CONFIGURATION.md)
+- [Docker and NAS](docs/DOCKER.md)
+- [Support and safe bug reporting](SUPPORT.md)
+- [Public roadmap](ROADMAP.md)
 - [Architecture and trust boundaries](ARCHITECTURE.md)
+- [Contributing](CONTRIBUTING.md)
 - [Release changes](CHANGELOG.md)
-- [Contribution guide](CONTRIBUTING.md)
 
-## Feedback and development
+Questions belong in [GitHub Discussions](https://github.com/zacklam1120-spec/PairCue/discussions).
+For a reproducible problem, use the guided
+[bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml). Nothing is
+collected automatically. Never post credentials, private paths, library screenshots, or subtitle
+content you do not have permission to share.
 
-You do not need to diagnose a technical cause. Use the guided
-[bug form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=bug_report.yml) or
-[idea form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=feature_request.yml).
-Never post credentials, private library paths, or copyrighted subtitle text.
+## Build from source
 
-Trying the beta for the first time? Follow the private [10-minute beta mission](docs/BETA_TEST.md),
-then tell us whether you reached a real bilingual subtitle with the short
-[first-result form](https://github.com/zacklam1120-spec/PairCue/issues/new?template=beta_report.yml).
-Nothing is collected automatically.
-
-To install from source, use Python 3.11 or newer:
+PairCue requires Python 3.11 or newer:
 
 ```bash
 python3 -m pip install .
 paircue
 ```
 
-Contributor checks are documented in [CONTRIBUTING.md](CONTRIBUTING.md). Configuration can be
-validated without displaying secrets with `paircue doctor` or `paircue doctor --json`.
+Check a saved configuration without displaying secrets using `paircue doctor`. See
+[Contributing](CONTRIBUTING.md) for the development environment and full test suite.
 
-## Project status and license
+## Independent and open
 
-PairCue is an independent beta project and is not affiliated with Plex, Jellyfin, Emby, Synology,
-subtitle providers, or model providers. Its application logic is independently implemented;
-contributions copied or closely adapted from other subtitle products are not accepted.
+PairCue is independently implemented and is not affiliated with Plex, Jellyfin, Emby, Synology,
+subtitle providers, or model providers. Copied or closely adapted code from other subtitle products
+is not accepted.
 
-[MIT](LICENSE). See [DEPENDENCY_POLICY.md](DEPENDENCY_POLICY.md) and
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency, FFmpeg, service, and content
-boundaries. This is project documentation, not legal advice.
+[MIT](LICENSE). Dependency, FFmpeg, provider, and content boundaries are documented in
+[Dependency policy](DEPENDENCY_POLICY.md) and [Third-party notices](THIRD_PARTY_NOTICES.md).

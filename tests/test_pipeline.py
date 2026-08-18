@@ -85,6 +85,14 @@ class RecordingSynchronizer:
         return True
 
 
+class MutatingSynchronizer(RecordingSynchronizer):
+    def sync(self, media_path: Path, subtitle_path: Path) -> bool:
+        super().sync(media_path, subtitle_path)
+        text = subtitle_path.read_text(encoding="utf-8")
+        subtitle_path.write_text(text.replace("00:00:00,", "00:00:00,"), encoding="utf-8")
+        return True
+
+
 class GeneratingTranscriber:
     def __init__(self) -> None:
         self.calls: list[tuple[Path, str]] = []
@@ -111,6 +119,7 @@ def _pipeline(
     downloader: object | None = None,
     synchronizer: object | None = None,
     transcriber: object | None = None,
+    clean_source_output: bool = False,
 ) -> SubtitlePipeline:
     return SubtitlePipeline(
         media_root=tmp_path,
@@ -121,6 +130,7 @@ def _pipeline(
         transcriber=transcriber,  # type: ignore[arg-type]
         translator=translator,  # type: ignore[arg-type]
         glossary=GlossaryStore(tmp_path / "state" / "glossaries"),
+        clean_source_output=clean_source_output,
         source_language=source_language,
         target_language=target_language,
         bilingual_order=bilingual_order,
@@ -167,7 +177,8 @@ def test_pipeline_does_not_publish_partial_translation(tmp_path: Path) -> None:
 def test_target_only_file_does_not_count_as_complete_bilingual_output(tmp_path: Path) -> None:
     item = _media(tmp_path)
     (tmp_path / "Movie.zh-TW.srt").write_text(
-        "1\n00:00:00,000 --> 00:00:01,000\n舊字幕\n\n",
+        "1\n00:00:00,000 --> 00:00:01,000\n舊\n\n"
+        "2\n00:00:01,000 --> 00:00:02,000\n字幕\n\n",
         encoding="utf-8",
     )
 
@@ -236,7 +247,8 @@ def test_pipeline_aligns_any_source_language_and_writes_learning_pair(tmp_path: 
 
     assert result.status == "completed"
     assert result.message == "aligned and translated 1 cues from ja to en"
-    assert synchronizer.paths == [tmp_path / "Lesson.ja.srt"]
+    assert [path.name for path in synchronizer.paths] == ["Lesson.ja.srt"]
+    assert all(path != tmp_path / "Lesson.ja.srt" for path in synchronizer.paths)
     assert (tmp_path / "Lesson.en.srt").exists()
     bilingual = (tmp_path / "Lesson.mul.srt").read_text(encoding="utf-8")
     assert "こんにちは\n翻譯 0" in bilingual
@@ -281,6 +293,55 @@ def test_pipeline_merges_two_existing_languages_without_ai(tmp_path: Path) -> No
 
     assert result.status == "completed"
     assert result.message == "merged existing subtitle tracks (100%/100% matched)"
-    assert synchronizer.paths == [tmp_path / "Lesson.ja.srt", tmp_path / "Lesson.en.srt"]
+    assert [path.name for path in synchronizer.paths] == ["Lesson.ja.srt", "Lesson.en.srt"]
+    assert all(path.parent != tmp_path for path in synchronizer.paths)
     bilingual = (tmp_path / "Lesson.mul.srt").read_text(encoding="utf-8")
     assert "Hello\nこんにちは" in bilingual
+
+
+def test_pipeline_preserves_existing_subtitles_byte_for_byte_by_default(tmp_path: Path) -> None:
+    item = _media_with_source(tmp_path, "ja", "こんにちは")
+    target = tmp_path / "Lesson.en.srt"
+    target.write_bytes(b"1\r\n00:00:00,050 --> 00:00:01,050\r\nHello\r\n\r\n")
+    source = tmp_path / "Lesson.ja.srt"
+    source_before = source.read_bytes()
+    target_before = target.read_bytes()
+
+    result = _pipeline(
+        tmp_path,
+        FailingTranslator(),
+        source_language="ja",
+        target_language="en",
+        synchronizer=MutatingSynchronizer(),
+    ).process(item)
+
+    assert result.status == "completed"
+    assert source.read_bytes() == source_before
+    assert target.read_bytes() == target_before
+
+
+def test_pipeline_never_replaces_existing_target_after_low_confidence_merge(
+    tmp_path: Path,
+) -> None:
+    item = _media_with_source(tmp_path, "ja", "こんにちは")
+    source = tmp_path / "Lesson.ja.srt"
+    target = tmp_path / "Lesson.en.srt"
+    target.write_text(
+        "1\n00:01:00,000 --> 00:01:01,000\nExisting translation\n\n",
+        encoding="utf-8",
+    )
+    source_before = source.read_bytes()
+    target_before = target.read_bytes()
+
+    result = _pipeline(
+        tmp_path,
+        FullTranslator(),
+        source_language="ja",
+        target_language="en",
+    ).process(item)
+
+    assert result.status == "failed"
+    assert "kept both existing subtitle tracks unchanged" in result.message
+    assert source.read_bytes() == source_before
+    assert target.read_bytes() == target_before
+    assert not (tmp_path / "Lesson.mul.srt").exists()

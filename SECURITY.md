@@ -22,6 +22,12 @@ and keeps the token in memory. It loads no remote assets. Generated `paircue.env
 automatic backups use owner-only permissions; they contain secrets and must never be committed or
 shared.
 
+Continuous integration scans tracked files and Git history for common credential formats, private
+keys, local user paths, and private AI-tool context markers. Desktop release jobs repeat the check
+against the unpacked package. Findings identify only the file and category; the suspected value is
+never printed. These checks are defense in depth, so contributors must still inspect every change
+and keep `.env`, credential, local assistant, and editor-context files outside the repository.
+
 Desktop Quick Pair accepts actions only from the tokenized same-origin setup page. Its two SRT
 inputs are read directly from paths returned by native operating-system file windows, are limited
 to 16 MB each, and are never uploaded. The browser receives only the new output filename.
@@ -39,3 +45,7 @@ When transcription is enabled, PairCue sends extracted audio chunks to the confi
 When translation is enabled, it sends subtitle dialogue to the configured endpoint. These features
 are disabled or unconfigured by default; review the provider's access, retention, and privacy terms
 before enabling either one.
+
+PairCue does not collect model conversations, prompts used to develop the project, editor history,
+or local AI-assistant metadata. Those materials are not runtime inputs and are blocked from release
+artifacts by project policy and automated private-context checks.

@@ -14,7 +14,8 @@ server, account, API key, or network request.
 
 Already have two SRT files? Press **Choose two SRTs**, choose the spoken subtitle and then the
 learning subtitle. PairCue creates a new bilingual `.mul.srt` locally, highlights it in the file
-manager, and does not require you to finish setup or add any API key.
+manager, and does not require you to finish setup or add any API key. Both original files remain
+byte-for-byte unchanged.
 PairCue then ends that app run cleanly; reopen it whenever you want to pair another set.
 
 For one video, PairCue opens the system file picker and reports progress in the same setup page. A
@@ -38,4 +39,7 @@ without them. Embedded-track extraction, audio synchronization, and speech gener
 separate FFmpeg installation.
 
 PairCue has no analytics or PairCue account. Provider features use credentials from your own
-provider accounts, and the setup stores them only in your private local configuration.
+provider accounts, and the setup stores them only in your private local configuration. PairCue
+aligns existing subtitles through temporary copies and leaves them unchanged by default.
+
+If you get stuck, read the official Troubleshooting and Support links on the PairCue GitHub page.

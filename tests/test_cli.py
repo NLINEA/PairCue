@@ -42,6 +42,16 @@ class RecordingPipeline:
         self.closed = True
 
 
+def test_version_command_reports_packaged_version(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip().startswith("paircue 0.1.0")
+
+
 def test_pair_command_creates_bilingual_srt(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
