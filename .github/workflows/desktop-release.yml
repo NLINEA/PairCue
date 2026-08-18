@@ -68,7 +68,7 @@ jobs:
         run: Compress-Archive -Path release/stage/PairCue-* -DestinationPath "release/${{ matrix.archive }}"
       - name: Archive Linux build
         if: runner.os == 'Linux'
-        run: tar -C release/stage -czf "release/${{ matrix.archive }}" PairCue-*
+        run: tar -C release/stage -czf "${{ github.workspace }}/release/${{ matrix.archive }}" PairCue-linux-x64
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}

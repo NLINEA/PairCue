@@ -39,6 +39,8 @@ certifi = "MPL-2.0"
 
 # Use only when package metadata is incomplete. Each override requires a manual source review.
 [license_overrides]
-# NumPy 2.2 metadata reports generic "BSD"; its upstream LICENSE.txt is BSD-3-Clause.
+# NumPy metadata reports generic "BSD"; its upstream LICENSE.txt is BSD-3-Clause.
 numpy = "BSD-3-Clause"
+# Colorama 0.4.6 reports generic "BSD"; its packaged LICENSE.txt is BSD-3-Clause.
+colorama = "BSD-3-Clause"
 opencc-python-reimplemented = "Apache-2.0"
